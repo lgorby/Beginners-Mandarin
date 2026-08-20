@@ -1,8 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getRecognizer, scoreMatch, speak } from "@/lib/speech";
+import {
+  ding,
+  getRecognizer,
+  hasSpeechRecognition,
+  recognizeAttempt,
+  speak,
+  stopSpeaking,
+} from "@/lib/speech";
+import { useClientValue } from "@/lib/useClientValue";
+import type { SyllableMark } from "@/lib/pronounce";
 import PinyinText from "./PinyinText";
+import SyllableReport from "./SyllableReport";
+import { useGentleTones } from "./useGentleTones";
 
 interface Props {
   /** The Mandarin phrase the learner should say */
@@ -38,9 +49,16 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
-  const [supported, setSupported] = useState(true);
+  const [report, setReport] = useState<SyllableMark[] | null>(null);
+  const [toneHint, setToneHint] = useState(false);
+  // Strict by default for adults — drill the tones — but relaxable.
+  const gentle = useGentleTones("adult");
+  // Server render (and hydration) assume supported, matching what this
+  // component has always shown first; the client then reads the truth.
+  const supported = useClientValue(hasSpeechRecognition, true);
   const [error, setError] = useState<string | null>(null);
   const recRef = useRef<SpeechRecognition | null>(null);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Record & Compare state
   const [recording, setRecording] = useState(false);
@@ -50,10 +68,10 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setSupported(getRecognizer() !== null);
     return () => {
       recRef.current?.abort();
       if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+      if (watchdogRef.current) clearTimeout(watchdogRef.current);
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
     };
   }, []);
@@ -65,37 +83,79 @@ export default function MicPractice({ target, pinyin, en }: Props) {
     };
   }, [clipUrl]);
 
+  // One recognizer per card. Chrome runs a single recognition session per
+  // page and tears the old one down asynchronously, so a fresh instance
+  // per tap can start against a half-dead session and fail every retry.
   const start = () => {
+    // A fresh recognizer per attempt: Edge can wedge a reused instance —
+    // start() is accepted but no events ever fire. Abort any previous
+    // session first.
+    recRef.current?.abort();
     const rec = getRecognizer();
     if (!rec) return;
     recRef.current = rec;
+    // Never listen while the speakers are playing the target phrase.
+    stopSpeaking();
     setHeard(null);
     setScore(null);
+    setReport(null);
+    setToneHint(false);
     setError(null);
     setListening(true);
-
-    rec.onresult = (ev) => {
-      // Pick the alternative that best matches the target.
-      let best = { transcript: "", score: -1 };
-      const result = ev.results[0];
-      for (let i = 0; i < result.length; i++) {
-        const alt = result[i];
-        const s = scoreMatch(target, alt.transcript);
-        if (s > best.score) best = { transcript: alt.transcript, score: s };
-      }
-      setHeard(best.transcript);
-      setScore(best.score);
-    };
-    rec.onerror = (ev) => {
-      setError(
-        REC_ERRORS[ev.error] ?? `Speech recognition error: ${ev.error}`
-      );
-      setListening(false);
-    };
-    rec.onend = () => setListening(false);
-    try {
-      rec.start();
-    } catch {
+    // If the service hangs, force the session closed so the button
+    // comes back instead of pulsing forever.
+    watchdogRef.current = setTimeout(() => recRef.current?.abort(), 12000);
+    const ok = recognizeAttempt(rec, target, {
+      phase: (p) => {
+        if (p === "mic") ding(); // the mic is truly open — speak now
+      },
+      settle: async (best) => {
+        if (best.candidates.length > 0) {
+          // Rescore by sound (pinyin + tones): a homophone transcript of
+          // a correct pronunciation must not read as failure. Also
+          // fetches the per-syllable report.
+          try {
+            const res = await fetch(
+              `/api/score?target=${encodeURIComponent(target)}&heard=${encodeURIComponent(best.candidates.join("|"))}`
+            );
+            if (res.ok) {
+              const sound: {
+                transcript: string;
+                score: number;
+                toneHint: boolean;
+                syllables: SyllableMark[];
+              } = await res.json();
+              setReport(sound.syllables);
+              setToneHint(sound.toneHint);
+              setHeard(
+                sound.score > best.score ? sound.transcript : best.transcript
+              );
+              setScore(Math.max(best.score, sound.score));
+              return;
+            }
+          } catch {
+            // Scoring API unreachable — the character score still stands.
+          }
+        }
+        if (best.score >= 0) {
+          setHeard(best.transcript);
+          setScore(best.score);
+        } else {
+          setError((er) => er ?? REC_ERRORS["no-speech"]);
+        }
+      },
+      error: (code) =>
+        setError(
+          code === "nomatch"
+            ? REC_ERRORS["no-speech"]
+            : (REC_ERRORS[code] ?? `Speech recognition error: ${code}`)
+        ),
+      ended: () => {
+        if (watchdogRef.current) clearTimeout(watchdogRef.current);
+        setListening(false);
+      },
+    });
+    if (!ok) {
       setError("Could not start listening — try again in a moment.");
       setListening(false);
     }
@@ -145,9 +205,11 @@ export default function MicPractice({ target, pinyin, en }: Props) {
       ? null
       : score >= 90
         ? { emoji: "🎉", msg: "Perfect! The recognizer heard exactly the right phrase.", color: "text-green-600 dark:text-green-400" }
-        : score >= 60
-          ? { emoji: "👍", msg: "Close! Most of it came through — listen again and watch the tones.", color: "text-amber-600 dark:text-amber-400" }
-          : { emoji: "🔁", msg: "Not quite — listen to the slow version and try again.", color: "text-red-600 dark:text-red-400" };
+        : gentle && toneHint
+          ? { emoji: "🎉", msg: "All the right sounds! (Gentle mode — tones not required. Listen again to copy the melody.)", color: "text-green-600 dark:text-green-400" }
+          : score >= 60
+            ? { emoji: "👍", msg: "Close! Most of it came through — listen again and watch the tones.", color: "text-amber-600 dark:text-amber-400" }
+            : { emoji: "🔁", msg: "Not quite — listen to the slow version and try again.", color: "text-red-600 dark:text-red-400" };
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -209,6 +271,11 @@ export default function MicPractice({ target, pinyin, en }: Props) {
             </span>
           </div>
           <div className="mt-1 text-sm text-zinc-500">{feedback.msg}</div>
+          {report && (
+            <div className="mt-3">
+              <SyllableReport syllables={report} score={score ?? 0} />
+            </div>
+          )}
         </div>
       )}
 

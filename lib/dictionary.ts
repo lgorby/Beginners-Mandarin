@@ -123,3 +123,42 @@ export function lookup(word: string): DictEntry | undefined {
   const dict = load();
   return dict.find((e) => e.simplified === word || e.traditional === word);
 }
+
+let pinyinMap: Map<string, string> | null = null;
+
+function getPinyinMap(): Map<string, string> {
+  if (pinyinMap) return pinyinMap;
+  const m = new Map<string, string>();
+  for (const e of load()) {
+    // First entry wins: CEDICT lists the common reading first.
+    if (e.simplified.length <= 8 && !m.has(e.simplified)) {
+      m.set(e.simplified, e.pinyin);
+    }
+  }
+  pinyinMap = m;
+  return m;
+}
+
+/**
+ * Numbered-pinyin syllables for a Chinese string, by greedy longest-word
+ * match against the dictionary (so 学生 reads as one word, not two
+ * guessed characters). Unknown characters contribute nothing.
+ */
+export function pinyinFor(text: string): string[] {
+  const m = getPinyinMap();
+  const out: string[] = [];
+  let i = 0;
+  while (i < text.length) {
+    let advanced = 1;
+    for (let len = Math.min(8, text.length - i); len >= 1; len--) {
+      const p = m.get(text.slice(i, i + len));
+      if (p) {
+        out.push(...p.split(/\s+/));
+        advanced = len;
+        break;
+      }
+    }
+    i += advanced;
+  }
+  return out;
+}
