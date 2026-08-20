@@ -83,6 +83,31 @@ export function stopSpeaking() {
   window.speechSynthesis.cancel();
 }
 
+let dingCtx: AudioContext | null = null;
+
+/**
+ * A short listening cue, played the moment the microphone actually opens.
+ * The recognizer takes a beat to connect after the tap — anyone speaking
+ * on the tap loses the front of the word, so the ding says "now".
+ */
+export function ding() {
+  if (typeof window === "undefined" || !window.AudioContext) return;
+  try {
+    dingCtx ??= new AudioContext();
+    const ctx = dingCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch {
+    // A missing cue must never break listening itself.
+  }
+}
+
 // --- Speech recognition -------------------------------------------------
 
 type RecognitionCtor = new () => SpeechRecognition;
@@ -104,12 +129,14 @@ export function hasSpeechRecognition(): boolean {
   return recognitionCtor() !== undefined;
 }
 
-export function getRecognizer(): SpeechRecognition | null {
+export function getRecognizer(lang = "zh-CN"): SpeechRecognition | null {
   const Ctor = recognitionCtor();
   if (!Ctor) return null;
   const rec = new Ctor();
-  rec.lang = "zh-CN";
-  rec.interimResults = false;
+  rec.lang = lang;
+  // Edge's recognizer often returns an EMPTY final transcript; the text
+  // only arrives through interim results, so they must be on.
+  rec.interimResults = true;
   rec.maxAlternatives = 5;
   return rec;
 }
@@ -143,21 +170,88 @@ export function scoreMatch(target: string, heard: string): number {
 }
 
 /**
- * Pick the recognition alternative that best matches the target. The
- * recognizer's first guess is often a homophone of the right answer
- * (持 for 吃), so scoring only alternative 0 fails speech it actually
- * understood.
+ * The best transcript in a recognition event, scored against the target.
+ * Considers every alternative of every result plus the joined stream,
+ * because browsers disagree about where the text shows up: Chrome's first
+ * alternative is often a homophone of the right answer (持 for 吃), and
+ * Edge's final transcript is often empty with the real text only in the
+ * interim results. Returns score -1 when the event carries no text at all.
  */
-export function bestMatch(
+export function bestCandidate(
   target: string,
-  result: ArrayLike<Pick<SpeechRecognitionAlternative, "transcript">> | undefined
+  e: { results: ArrayLike<ArrayLike<Pick<SpeechRecognitionAlternative, "transcript">>> }
 ): { transcript: string; score: number } {
-  let best = { transcript: "", score: 0 };
-  for (let i = 0; result && i < result.length; i++) {
-    const s = scoreMatch(target, result[i].transcript);
-    if (i === 0 || s > best.score) best = { transcript: result[i].transcript, score: s };
+  const candidates: string[] = [];
+  let joined = "";
+  for (let i = 0; i < e.results.length; i++) {
+    const r = e.results[i];
+    joined += r[0]?.transcript ?? "";
+    for (let j = 0; j < r.length; j++) {
+      if (r[j].transcript) candidates.push(r[j].transcript);
+    }
+  }
+  if (joined) candidates.push(joined);
+  let best = { transcript: "", score: -1 };
+  for (const c of candidates) {
+    const s = scoreMatch(target, c);
+    if (s > best.score) best = { transcript: c, score: s };
   }
   return best;
+}
+
+/**
+ * Wire one recognition attempt and start it. Collects the best candidate
+ * across every event and reports it through settle() after the session
+ * ends (score -1 = no text at all). error() gets raw error codes plus
+ * "nomatch", and never "aborted" (that's our own teardown, not a failure).
+ * Returns false if the session could not start.
+ */
+export function recognizeAttempt(
+  rec: SpeechRecognition,
+  target: string,
+  cb: {
+    settle: (best: {
+      transcript: string;
+      score: number;
+      heardSound: boolean;
+    }) => void;
+    error: (code: string) => void;
+    ended: () => void;
+    /** Lifecycle, straight from the recognizer's own events — the only
+     *  honest signal of whether a session really opened and heard you. */
+    phase?: (p: "session" | "mic" | "sound" | "speech") => void;
+  }
+): boolean {
+  let best = { transcript: "", score: -1, heardSound: false };
+  rec.onstart = () => cb.phase?.("session");
+  rec.onaudiostart = () => cb.phase?.("mic");
+  rec.onsoundstart = () => {
+    best = { ...best, heardSound: true };
+    cb.phase?.("sound");
+  };
+  rec.onspeechstart = () => {
+    best = { ...best, heardSound: true };
+    cb.phase?.("speech");
+  };
+  rec.onresult = (e) => {
+    const c = bestCandidate(target, e);
+    if (c.score > best.score) best = { ...c, heardSound: best.heardSound };
+  };
+  rec.onnomatch = () => cb.error("nomatch");
+  rec.onerror = (e) => {
+    if (e.error !== "aborted") cb.error(e.error);
+  };
+  rec.onend = () => {
+    cb.ended();
+    cb.settle(best);
+  };
+  try {
+    rec.start();
+    return true;
+  } catch {
+    rec.abort();
+    return false;
+  }
 }
 
 /**

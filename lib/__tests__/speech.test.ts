@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestMatch, scoreMatch } from "@/lib/speech";
+import { bestCandidate, scoreMatch } from "@/lib/speech";
 
 describe("scoreMatch", () => {
   it("gives 100 for an exact match", () => {
@@ -19,20 +19,37 @@ describe("scoreMatch", () => {
   });
 });
 
-describe("bestMatch", () => {
+describe("bestCandidate", () => {
+  // A recognition event: each inner array is one result's alternatives.
+  const ev = (...results: string[][]) => ({
+    results: results.map((alts) => alts.map((transcript) => ({ transcript }))),
+  });
+
   it("prefers a later alternative that matches the target", () => {
-    expect(
-      bestMatch("吃", [{ transcript: "持" }, { transcript: "吃" }])
-    ).toEqual({ transcript: "吃", score: 100 });
+    expect(bestCandidate("吃", ev(["持", "吃"]))).toEqual({
+      transcript: "吃",
+      score: 100,
+    });
   });
 
   it("falls back to the first alternative when none match", () => {
-    expect(
-      bestMatch("吃", [{ transcript: "持" }, { transcript: "迟" }])
-    ).toEqual({ transcript: "持", score: 0 });
+    expect(bestCandidate("吃", ev(["持", "迟"]))).toEqual({
+      transcript: "持",
+      score: 0,
+    });
   });
 
-  it("handles a missing result", () => {
-    expect(bestMatch("吃", undefined)).toEqual({ transcript: "", score: 0 });
+  it("joins the stream when the final transcript is empty (Edge)", () => {
+    expect(bestCandidate("你好", ev(["你"], ["好"], [""]))).toEqual({
+      transcript: "你好",
+      score: 100,
+    });
+  });
+
+  it("reports an event with no text as score -1", () => {
+    expect(bestCandidate("吃", ev([""]))).toEqual({
+      transcript: "",
+      score: -1,
+    });
   });
 });

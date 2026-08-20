@@ -83,7 +83,7 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
         <Link
           href="/learn"
           aria-label="Back to the map"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-2xl dark:bg-zinc-800"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 border-zinc-200 bg-white text-2xl font-bold shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
         >
           ←
         </Link>

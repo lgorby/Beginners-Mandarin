@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import SentenceRow from "../SentenceRow";
 import StepShell from "../StepShell";
 import {
-  bestMatch,
+  ding,
   getRecognizer,
   hasSpeechRecognition,
+  recognizeAttempt,
   speak,
   stopSpeaking,
 } from "@/lib/speech";
@@ -26,42 +27,86 @@ export default function SayStep({
   const supported = useClientValue(hasSpeechRecognition, false);
   const [listening, setListening] = useState(false);
   const [score, setScore] = useState<number | null>(null);
-  const [micTrouble, setMicTrouble] = useState(false);
+  const [trouble, setTrouble] = useState<"none" | "unheard" | "blocked">(
+    "none"
+  );
+  const [attempt, setAttempt] = useState(0);
+  const [phase, setPhase] = useState<
+    "starting" | "session" | "mic" | "sound" | "speech"
+  >("starting");
   const recRef = useRef<SpeechRecognition | null>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     speakTimer.current = setTimeout(() => speak(target), 900);
     const rec = recRef;
-    const timer = speakTimer;
+    const timers = [speakTimer, watchdog];
     return () => {
-      if (timer.current) clearTimeout(timer.current);
+      timers.forEach((t) => t.current && clearTimeout(t.current));
       rec.current?.abort();
     };
   }, [target]);
 
+  // One recognizer for the whole step. Chrome runs a single recognition
+  // session per page and tears the old one down asynchronously, so a
+  // fresh instance per tap can start against a half-dead session and
+  // fail every retry.
   const listen = () => {
+    // A fresh recognizer per attempt: Edge can wedge a reused instance —
+    // start() is accepted but no events ever fire, so the button would
+    // pulse until the watchdog. Abort any previous session first.
+    recRef.current?.abort();
     const rec = getRecognizer();
     if (!rec) return;
+    recRef.current = rec;
     // The word must never play into an open microphone: the recognizer
     // would hear the speakers, not the child.
     if (speakTimer.current) clearTimeout(speakTimer.current);
     stopSpeaking();
-    recRef.current = rec;
-    setMicTrouble(false);
+    setTrouble("none");
     setListening(true);
-    rec.onresult = (e: SpeechRecognitionEvent) => {
-      setScore(bestMatch(target, e.results[0]).score);
-    };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => {
-      setMicTrouble(true);
+    setAttempt((a) => a + 1);
+    setPhase("starting");
+    // If the service hangs, reset the UI directly — a wedged recognizer
+    // may not even honor abort() with an end event.
+    watchdog.current = setTimeout(() => {
+      recRef.current?.abort();
       setListening(false);
-    };
-    try {
-      rec.start();
-    } catch {
-      setMicTrouble(true);
+      setTrouble((t) => (t === "none" ? "unheard" : t));
+    }, 12000);
+    const ok = recognizeAttempt(rec, target, {
+      phase: (p) => {
+        setPhase(p);
+        if (p === "mic") ding(); // the mic is truly open — speak now
+      },
+      settle: (best) => {
+        if (best.score >= 0) {
+          setScore(best.score);
+          setTrouble("none");
+        } else if (best.heardSound) {
+          // Sound arrived but nothing was recognized — that's a "try
+          // again", not a false "I didn't hear you".
+          setScore(0);
+          setTrouble("none");
+        } else {
+          // No sound at all — say so rather than showing nothing.
+          setTrouble((t) => (t === "none" ? "unheard" : t));
+        }
+      },
+      error: (code) =>
+        setTrouble(
+          ["not-allowed", "service-not-allowed", "audio-capture"].includes(code)
+            ? "blocked"
+            : "unheard"
+        ),
+      ended: () => {
+        if (watchdog.current) clearTimeout(watchdog.current);
+        setListening(false);
+      },
+    });
+    if (!ok) {
+      setTrouble("unheard");
       setListening(false);
     }
   };
@@ -107,9 +152,41 @@ export default function SayStep({
         </p>
       )}
 
-      {/* A pre-reader can't parse "67%", and a one-word target can only
-          score 0 or 100 anyway — tiers say it better than numbers. */}
-      {score !== null && (
+      {listening && (
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-lg text-zinc-500">
+            Attempt {attempt} ·{" "}
+            {phase === "starting"
+              ? "getting ready…"
+              : phase === "session" || phase === "mic"
+                ? "🎙️ listening — say it now!"
+                : "👂 I can hear you!"}
+          </p>
+          {/* The bars only dance once the recognizer itself reports
+              sound — an honest signal, not a decoration. */}
+          {(phase === "sound" || phase === "speech") && (
+            <div className="flex h-8 items-center gap-1" aria-hidden>
+              {[10, 20, 28, 16, 24, 12, 22].map((h, i) => (
+                <span
+                  key={i}
+                  className="w-1.5 animate-bounce rounded-full bg-red-500"
+                  style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {trouble !== "none" ? (
+        <p className="max-w-xs text-center text-lg text-zinc-500">
+          {trouble === "blocked"
+            ? "🔇 Ask a grown-up to switch on the microphone (the 🔒 by the address bar)"
+            : "🙉 I didn't hear you — tap 🎤 and try again"}
+        </p>
+      ) : score !== null ? (
+        // A pre-reader can't parse "67%", and a one-word target can only
+        // score 0 or 100 anyway — tiers say it better than numbers.
         <p className="text-2xl font-bold">
           {score >= 90
             ? "🎉 Perfect!"
@@ -117,12 +194,7 @@ export default function SayStep({
               ? "😊 So close — try again!"
               : "🙂 Try again!"}
         </p>
-      )}
-      {micTrouble && score === null && (
-        <p className="max-w-xs text-center text-lg text-zinc-500">
-          🙉 I didn&apos;t hear you — tap 🎤 and try again
-        </p>
-      )}
+      ) : null}
     </StepShell>
   );
 }

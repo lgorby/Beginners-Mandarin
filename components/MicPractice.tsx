@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  bestMatch,
+  ding,
   getRecognizer,
   hasSpeechRecognition,
+  recognizeAttempt,
   speak,
   stopSpeaking,
 } from "@/lib/speech";
@@ -50,6 +51,7 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const supported = useClientValue(hasSpeechRecognition, true);
   const [error, setError] = useState<string | null>(null);
   const recRef = useRef<SpeechRecognition | null>(null);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Record & Compare state
   const [recording, setRecording] = useState(false);
@@ -62,6 +64,7 @@ export default function MicPractice({ target, pinyin, en }: Props) {
     return () => {
       recRef.current?.abort();
       if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+      if (watchdogRef.current) clearTimeout(watchdogRef.current);
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
     };
   }, []);
@@ -73,32 +76,50 @@ export default function MicPractice({ target, pinyin, en }: Props) {
     };
   }, [clipUrl]);
 
+  // One recognizer per card. Chrome runs a single recognition session per
+  // page and tears the old one down asynchronously, so a fresh instance
+  // per tap can start against a half-dead session and fail every retry.
   const start = () => {
+    // A fresh recognizer per attempt: Edge can wedge a reused instance —
+    // start() is accepted but no events ever fire. Abort any previous
+    // session first.
+    recRef.current?.abort();
     const rec = getRecognizer();
     if (!rec) return;
+    recRef.current = rec;
     // Never listen while the speakers are playing the target phrase.
     stopSpeaking();
-    recRef.current = rec;
     setHeard(null);
     setScore(null);
     setError(null);
     setListening(true);
-
-    rec.onresult = (ev) => {
-      const best = bestMatch(target, ev.results[0]);
-      setHeard(best.transcript);
-      setScore(best.score);
-    };
-    rec.onerror = (ev) => {
-      setError(
-        REC_ERRORS[ev.error] ?? `Speech recognition error: ${ev.error}`
-      );
-      setListening(false);
-    };
-    rec.onend = () => setListening(false);
-    try {
-      rec.start();
-    } catch {
+    // If the service hangs, force the session closed so the button
+    // comes back instead of pulsing forever.
+    watchdogRef.current = setTimeout(() => recRef.current?.abort(), 12000);
+    const ok = recognizeAttempt(rec, target, {
+      phase: (p) => {
+        if (p === "mic") ding(); // the mic is truly open — speak now
+      },
+      settle: (best) => {
+        if (best.score >= 0) {
+          setHeard(best.transcript);
+          setScore(best.score);
+        } else {
+          setError((er) => er ?? REC_ERRORS["no-speech"]);
+        }
+      },
+      error: (code) =>
+        setError(
+          code === "nomatch"
+            ? REC_ERRORS["no-speech"]
+            : (REC_ERRORS[code] ?? `Speech recognition error: ${code}`)
+        ),
+      ended: () => {
+        if (watchdogRef.current) clearTimeout(watchdogRef.current);
+        setListening(false);
+      },
+    });
+    if (!ok) {
       setError("Could not start listening — try again in a moment.");
       setListening(false);
     }
