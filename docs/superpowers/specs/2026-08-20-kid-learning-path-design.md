@@ -61,7 +61,8 @@ The kid path becomes the app. Nothing is deleted.
 
 | Route | Change |
 |---|---|
-| `/` | **Replaced** — becomes the star path |
+| `/` | **Replaced** — becomes the front-door chooser |
+| `/learn` | **New** — the star path |
 | `/learn/[id]` | **New** — the lesson runner |
 | `/grown-ups` | **New** — today's home page, all seven feature cards |
 | `/tones` `/dictionary` `/practice` `/strokes` `/characters` `/flashcards` `/lessons` | Unchanged, reached from `/grown-ups` |

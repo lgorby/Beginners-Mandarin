@@ -1,9 +1,10 @@
 # 你好 Mandarin — Beginners Mandarin
 
 A web app that teaches Mandarin Chinese from absolute zero, with sound, speech,
-and visuals throughout. There are two ways in.
+and visuals throughout. Opening the app puts you at a front door with two
+ways in.
 
-## 🧒 The kids' path (`/`)
+## 🧒 The kids' path (`/learn`)
 
 A guided route for a child aged roughly 5–11. Ten lessons carry one pictured
 word forward into a spoken sentence, one screen at a time:
@@ -23,6 +24,9 @@ sentence into a question, 他/她 swap the subject, and 不 negates it.
 - **Nothing punishes.** No hearts, no timers, no streaks. Stars are earned and
   never lost, and a wrong tap just reveals the answer and lets you retry.
 - **Locked in order**, so there is never a choice about what to do next.
+
+The front door itself follows the same rule: the child's card is large and
+shows their star total, the grown-up card is a quieter one below it.
 
 ## 🧑 The grown-up section (`/grown-ups`)
 
