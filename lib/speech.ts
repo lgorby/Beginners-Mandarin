@@ -123,3 +123,20 @@ export function scoreMatch(target: string, heard: string): number {
   }
   return Math.round((dp[a.length][b.length] / a.length) * 100);
 }
+
+/**
+ * Speak an English instruction aloud, so the kid path is usable by a
+ * child who cannot yet read. Separate from speak(), which is zh-CN.
+ */
+export function speakEnglish(text: string, opts?: { rate?: number }) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = opts?.rate ?? 0.95;
+  const english = window.speechSynthesis
+    .getVoices()
+    .find((v) => /^en([-_]|$)/i.test(v.lang));
+  if (english) u.voice = english;
+  window.speechSynthesis.speak(u);
+}
