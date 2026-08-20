@@ -77,6 +77,12 @@ export function hasMandarinVoice(): boolean {
   return getMandarinVoices().length > 0;
 }
 
+/** Stop any speech immediately (e.g. before the microphone opens). */
+export function stopSpeaking() {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+}
+
 // --- Speech recognition -------------------------------------------------
 
 type RecognitionCtor = new () => SpeechRecognition;
@@ -134,6 +140,24 @@ export function scoreMatch(target: string, heard: string): number {
     }
   }
   return Math.round((dp[a.length][b.length] / a.length) * 100);
+}
+
+/**
+ * Pick the recognition alternative that best matches the target. The
+ * recognizer's first guess is often a homophone of the right answer
+ * (持 for 吃), so scoring only alternative 0 fails speech it actually
+ * understood.
+ */
+export function bestMatch(
+  target: string,
+  result: ArrayLike<Pick<SpeechRecognitionAlternative, "transcript">> | undefined
+): { transcript: string; score: number } {
+  let best = { transcript: "", score: 0 };
+  for (let i = 0; result && i < result.length; i++) {
+    const s = scoreMatch(target, result[i].transcript);
+    if (i === 0 || s > best.score) best = { transcript: result[i].transcript, score: s };
+  }
+  return best;
 }
 
 /**

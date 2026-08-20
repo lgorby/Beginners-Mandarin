@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import SentenceRow from "../SentenceRow";
 import StepShell from "../StepShell";
 import {
+  bestMatch,
   getRecognizer,
   hasSpeechRecognition,
-  scoreMatch,
   speak,
+  stopSpeaking,
 } from "@/lib/speech";
 import { useClientValue } from "@/lib/useClientValue";
 import type { Step } from "@/lib/steps";
@@ -25,13 +26,16 @@ export default function SayStep({
   const supported = useClientValue(hasSpeechRecognition, false);
   const [listening, setListening] = useState(false);
   const [score, setScore] = useState<number | null>(null);
+  const [micTrouble, setMicTrouble] = useState(false);
   const recRef = useRef<SpeechRecognition | null>(null);
+  const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => speak(target), 900);
+    speakTimer.current = setTimeout(() => speak(target), 900);
     const rec = recRef;
+    const timer = speakTimer;
     return () => {
-      clearTimeout(t);
+      if (timer.current) clearTimeout(timer.current);
       rec.current?.abort();
     };
   }, [target]);
@@ -39,15 +43,27 @@ export default function SayStep({
   const listen = () => {
     const rec = getRecognizer();
     if (!rec) return;
+    // The word must never play into an open microphone: the recognizer
+    // would hear the speakers, not the child.
+    if (speakTimer.current) clearTimeout(speakTimer.current);
+    stopSpeaking();
     recRef.current = rec;
+    setMicTrouble(false);
     setListening(true);
     rec.onresult = (e: SpeechRecognitionEvent) => {
-      const heard = e.results[0]?.[0]?.transcript ?? "";
-      setScore(scoreMatch(target, heard));
+      setScore(bestMatch(target, e.results[0]).score);
     };
     rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    rec.start();
+    rec.onerror = () => {
+      setMicTrouble(true);
+      setListening(false);
+    };
+    try {
+      rec.start();
+    } catch {
+      setMicTrouble(true);
+      setListening(false);
+    }
   };
 
   return (
@@ -91,9 +107,20 @@ export default function SayStep({
         </p>
       )}
 
+      {/* A pre-reader can't parse "67%", and a one-word target can only
+          score 0 or 100 anyway — tiers say it better than numbers. */}
       {score !== null && (
         <p className="text-2xl font-bold">
-          {score >= 60 ? `🎉 ${score}%` : `🙂 Nearly — ${score}%`}
+          {score >= 90
+            ? "🎉 Perfect!"
+            : score >= 50
+              ? "😊 So close — try again!"
+              : "🙂 Try again!"}
+        </p>
+      )}
+      {micTrouble && score === null && (
+        <p className="max-w-xs text-center text-lg text-zinc-500">
+          🙉 I didn&apos;t hear you — tap 🎤 and try again
         </p>
       )}
     </StepShell>

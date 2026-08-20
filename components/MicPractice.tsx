@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getRecognizer, hasSpeechRecognition, scoreMatch, speak } from "@/lib/speech";
+import {
+  bestMatch,
+  getRecognizer,
+  hasSpeechRecognition,
+  speak,
+  stopSpeaking,
+} from "@/lib/speech";
 import { useClientValue } from "@/lib/useClientValue";
 import PinyinText from "./PinyinText";
 
@@ -70,6 +76,8 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const start = () => {
     const rec = getRecognizer();
     if (!rec) return;
+    // Never listen while the speakers are playing the target phrase.
+    stopSpeaking();
     recRef.current = rec;
     setHeard(null);
     setScore(null);
@@ -77,14 +85,7 @@ export default function MicPractice({ target, pinyin, en }: Props) {
     setListening(true);
 
     rec.onresult = (ev) => {
-      // Pick the alternative that best matches the target.
-      let best = { transcript: "", score: -1 };
-      const result = ev.results[0];
-      for (let i = 0; i < result.length; i++) {
-        const alt = result[i];
-        const s = scoreMatch(target, alt.transcript);
-        if (s > best.score) best = { transcript: alt.transcript, score: s };
-      }
+      const best = bestMatch(target, ev.results[0]);
       setHeard(best.transcript);
       setScore(best.score);
     };

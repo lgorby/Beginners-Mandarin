@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import BuildStep from "./steps/BuildStep";
 import MatchStep from "./steps/MatchStep";
 import MeetStep from "./steps/MeetStep";
@@ -18,7 +17,6 @@ import {
 } from "@/lib/progress";
 
 export default function LessonRunner({ lessonId }: { lessonId: string }) {
-  const router = useRouter();
   const steps = useMemo(() => buildSteps(lessonId), [lessonId]);
   const [index, setIndex] = useState(0);
   const [cleanMatches, setCleanMatches] = useState(true);
@@ -82,14 +80,13 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex items-center gap-3 px-4 py-3">
-        <button
-          type="button"
-          onClick={() => router.push("/learn")}
-          aria-label="Close the lesson"
-          className="text-2xl text-zinc-400"
+        <Link
+          href="/learn"
+          aria-label="Back to the map"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-2xl dark:bg-zinc-800"
         >
-          ✕
-        </button>
+          ←
+        </Link>
         <div className="h-4 flex-1 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
           <div
             className="h-full rounded-full bg-green-500 transition-all"
