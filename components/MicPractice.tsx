@@ -1,0 +1,260 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { getRecognizer, scoreMatch, speak } from "@/lib/speech";
+import PinyinText from "./PinyinText";
+
+interface Props {
+  /** The Mandarin phrase the learner should say */
+  target: string;
+  pinyin: string;
+  en: string;
+}
+
+// Plain-language explanations for every Web Speech recognition error code.
+const REC_ERRORS: Record<string, string> = {
+  "not-allowed":
+    "Microphone access is blocked. Click the 🔒/🎤 icon in the address bar, allow the microphone, and reload.",
+  "service-not-allowed":
+    "This browser blocked its speech service. Try Google Chrome — its Mandarin recognizer is the most reliable.",
+  "language-not-supported":
+    "This browser's speech recognizer doesn't support Mandarin. Use Google Chrome for scored practice — or use Record & Compare below, which works everywhere.",
+  network:
+    "The speech recognizer needs an internet connection (it runs in the cloud). Check your connection — or use Record & Compare below, which works offline.",
+  "audio-capture":
+    "No microphone was found. Check it's plugged in and enabled in Windows Settings → Privacy & security → Microphone.",
+  "no-speech": "Didn't hear anything — try again and speak a bit louder.",
+  aborted: "Listening was cancelled.",
+};
+
+/**
+ * Microphone pronunciation practice, two ways:
+ *  1. "Say it!" — the browser's zh-CN speech recognizer scores your attempt
+ *     (Chrome/Edge, needs internet).
+ *  2. "Record & Compare" — record your voice and play it back next to the
+ *     native audio (works in any browser, offline).
+ */
+export default function MicPractice({ target, pinyin, en }: Props) {
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
+  const [score, setScore] = useState<number | null>(null);
+  const [supported, setSupported] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const recRef = useRef<SpeechRecognition | null>(null);
+
+  // Record & Compare state
+  const [recording, setRecording] = useState(false);
+  const [clipUrl, setClipUrl] = useState<string | null>(null);
+  const [recError, setRecError] = useState<string | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setSupported(getRecognizer() !== null);
+    return () => {
+      recRef.current?.abort();
+      if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+      recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  // Revoke old object URLs so recordings don't leak memory.
+  useEffect(() => {
+    return () => {
+      if (clipUrl) URL.revokeObjectURL(clipUrl);
+    };
+  }, [clipUrl]);
+
+  const start = () => {
+    const rec = getRecognizer();
+    if (!rec) return;
+    recRef.current = rec;
+    setHeard(null);
+    setScore(null);
+    setError(null);
+    setListening(true);
+
+    rec.onresult = (ev) => {
+      // Pick the alternative that best matches the target.
+      let best = { transcript: "", score: -1 };
+      const result = ev.results[0];
+      for (let i = 0; i < result.length; i++) {
+        const alt = result[i];
+        const s = scoreMatch(target, alt.transcript);
+        if (s > best.score) best = { transcript: alt.transcript, score: s };
+      }
+      setHeard(best.transcript);
+      setScore(best.score);
+    };
+    rec.onerror = (ev) => {
+      setError(
+        REC_ERRORS[ev.error] ?? `Speech recognition error: ${ev.error}`
+      );
+      setListening(false);
+    };
+    rec.onend = () => setListening(false);
+    try {
+      rec.start();
+    } catch {
+      setError("Could not start listening — try again in a moment.");
+      setListening(false);
+    }
+  };
+
+  const startRecording = async () => {
+    setRecError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: recorder.mimeType });
+        setClipUrl(URL.createObjectURL(blob));
+        setRecording(false);
+      };
+      recorder.start();
+      setRecording(true);
+      // Auto-stop after 6 seconds so a missed click doesn't record forever.
+      stopTimerRef.current = setTimeout(() => {
+        if (recorder.state === "recording") recorder.stop();
+      }, 6000);
+    } catch (e) {
+      const name = e instanceof DOMException ? e.name : "";
+      setRecError(
+        name === "NotAllowedError"
+          ? "Microphone permission is blocked — allow it via the 🔒/🎤 icon in the address bar, then reload."
+          : name === "NotFoundError"
+            ? "No microphone found — check Windows sound settings."
+            : "Could not start recording."
+      );
+    }
+  };
+
+  const stopRecording = () => {
+    if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  };
+
+  const feedback =
+    score === null
+      ? null
+      : score >= 90
+        ? { emoji: "🎉", msg: "Perfect! The recognizer heard exactly the right phrase.", color: "text-green-600 dark:text-green-400" }
+        : score >= 60
+          ? { emoji: "👍", msg: "Close! Most of it came through — listen again and watch the tones.", color: "text-amber-600 dark:text-amber-400" }
+          : { emoji: "🔁", msg: "Not quite — listen to the slow version and try again.", color: "text-red-600 dark:text-red-400" };
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-1 text-3xl font-semibold" lang="zh-CN">
+        {target}
+      </div>
+      <PinyinText pinyin={pinyin} className="text-lg" />
+      <div className="mb-4 text-sm text-zinc-500">{en}</div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => speak(target, { rate: 0.85 })}
+          className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+        >
+          🔊 Listen
+        </button>
+        <button
+          type="button"
+          onClick={() => speak(target, { rate: 0.5 })}
+          className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+        >
+          🐢 Slow
+        </button>
+        {supported && (
+          <button
+            type="button"
+            onClick={start}
+            disabled={listening}
+            className={`rounded-full px-5 py-2 text-sm font-semibold text-white transition active:scale-95 ${
+              listening
+                ? "animate-pulse bg-red-500"
+                : "bg-red-600 hover:bg-red-700"
+            }`}
+          >
+            {listening ? "🎤 Listening…" : "🎤 Say it!"}
+          </button>
+        )}
+      </div>
+
+      {!supported && (
+        <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
+          Scored practice needs Google Chrome (this browser has no Mandarin
+          speech recognizer) — but Record &amp; Compare below works here.
+        </p>
+      )}
+
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+      {heard !== null && feedback && (
+        <div className="mt-4 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800">
+          <div className={`font-semibold ${feedback.color}`}>
+            {feedback.emoji} {score}% match
+          </div>
+          <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+            We heard:{" "}
+            <span className="text-lg" lang="zh-CN">
+              {heard || "(nothing)"}
+            </span>
+          </div>
+          <div className="mt-1 text-sm text-zinc-500">{feedback.msg}</div>
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-dashed border-zinc-200 pt-4 dark:border-zinc-700">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">
+            🎙️ Record &amp; Compare:
+          </span>
+          {!recording ? (
+            <button
+              type="button"
+              onClick={startRecording}
+              className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+            >
+              ⏺ Record me
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={stopRecording}
+              className="animate-pulse rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              ⏹ Stop
+            </button>
+          )}
+          {clipUrl && !recording && (
+            <>
+              <audio src={clipUrl} controls className="h-9 max-w-52" />
+              <button
+                type="button"
+                onClick={() => speak(target, { rate: 0.85 })}
+                className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+              >
+                🔊 Native again
+              </button>
+            </>
+          )}
+        </div>
+        {recError && <p className="mt-2 text-sm text-red-600">{recError}</p>}
+        {clipUrl && !recording && (
+          <p className="mt-2 text-xs text-zinc-400">
+            Play your voice, then the native audio — do the tones rise and fall
+            the same way?
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
