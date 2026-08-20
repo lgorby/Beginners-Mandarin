@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PicTile from "../PicTile";
 import StepShell from "../StepShell";
 import { speak } from "@/lib/speech";
@@ -24,6 +24,15 @@ export default function BuildStep({
   const [placed, setPlaced] = useState<string[]>([]);
   const [missed, setMissed] = useState(false);
   const tray = scramble(step.answer);
+  const target = step.answer.join("");
+
+  // Say the sentence the child is meant to build — without hearing it,
+  // "put them in order" is a guessing game, not listening comprehension.
+  // The 900ms delay lets the English instruction finish first.
+  useEffect(() => {
+    const t = setTimeout(() => speak(target), 900);
+    return () => clearTimeout(t);
+  }, [target]);
 
   const solved = placed.length === step.answer.length;
   const usedCount = (zh: string) => placed.filter((p) => p === zh).length;
@@ -45,6 +54,15 @@ export default function BuildStep({
       canContinue={solved}
       onContinue={() => onDone({ correct: !missed, spoken: false })}
     >
+      <button
+        type="button"
+        onClick={() => speak(target)}
+        className="rounded-full bg-red-50 px-6 py-4 text-3xl dark:bg-red-950"
+        aria-label="Hear the sentence again"
+      >
+        🔊
+      </button>
+
       <div className="flex min-h-32 flex-wrap items-center justify-center gap-2 rounded-3xl border-4 border-dashed border-zinc-300 p-3 dark:border-zinc-700">
         {placed.length === 0 ? (
           <span className="text-lg text-zinc-400">

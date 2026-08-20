@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import SentenceRow from "../SentenceRow";
 import StepShell from "../StepShell";
 import {
   ding,
   getRecognizer,
   hasSpeechRecognition,
+  micPermissionGranted,
   recognizeAttempt,
   speak,
   stopSpeaking,
@@ -46,22 +47,12 @@ export default function SayStep({
   const recRef = useRef<SpeechRecognition | null>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Hands-free listening is armed once per step; any manual tap (🎤 or
+  // 🔊) disarms it so the mic never opens against the child's actions.
+  const autoArmed = useRef(true);
 
-  useEffect(() => {
-    speakTimer.current = setTimeout(() => speak(target), 900);
-    const rec = recRef;
-    const timers = [speakTimer, watchdog];
-    return () => {
-      timers.forEach((t) => t.current && clearTimeout(t.current));
-      rec.current?.abort();
-    };
-  }, [target]);
-
-  // One recognizer for the whole step. Chrome runs a single recognition
-  // session per page and tears the old one down asynchronously, so a
-  // fresh instance per tap can start against a half-dead session and
-  // fail every retry.
-  const listen = () => {
+  const listen = useCallback(() => {
+    autoArmed.current = false;
     // A fresh recognizer per attempt: Edge can wedge a reused instance —
     // start() is accepted but no events ever fire, so the button would
     // pulse until the watchdog. Abort any previous session first.
@@ -145,7 +136,35 @@ export default function SayStep({
       setTrouble("unheard");
       setListening(false);
     }
-  };
+  }, [target]);
+
+  // Speak the word, then open the mic hands-free: hear it, echo it — no
+  // button on the first go. Waits for the TTS to actually finish, opens
+  // only when the mic is already allowed (the first-ever grant needs a
+  // deliberate tap), and fires at most once per step.
+  useEffect(() => {
+    autoArmed.current = true;
+    speakTimer.current = setTimeout(() => {
+      speak(target, {
+        onDone: async () => {
+          if (!autoArmed.current || !hasSpeechRecognition()) return;
+          if (!(await micPermissionGranted())) return;
+          if (!autoArmed.current) return; // disarmed while we awaited
+          speakTimer.current = setTimeout(() => {
+            if (autoArmed.current) listen();
+          }, 350);
+        },
+      });
+    }, 900);
+    const armed = autoArmed;
+    const rec = recRef;
+    const timers = [speakTimer, watchdog];
+    return () => {
+      armed.current = false;
+      timers.forEach((t) => t.current && clearTimeout(t.current));
+      rec.current?.abort();
+    };
+  }, [target, listen]);
 
   return (
     <StepShell
@@ -161,7 +180,10 @@ export default function SayStep({
 
       <button
         type="button"
-        onClick={() => speak(target)}
+        onClick={() => {
+          autoArmed.current = false; // replaying must not open the mic
+          speak(target);
+        }}
         className="rounded-full bg-red-50 px-6 py-4 text-3xl dark:bg-red-950"
         aria-label="Hear it again"
       >

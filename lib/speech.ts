@@ -62,8 +62,15 @@ export function onVoicesReady(cb: () => void) {
   window.speechSynthesis.addEventListener("voiceschanged", cb, { once: true });
 }
 
-/** Speak Mandarin text aloud. rate < 1 slows it down for learners. */
-export function speak(text: string, opts?: { rate?: number; voiceName?: string }) {
+/**
+ * Speak Mandarin text aloud. rate < 1 slows it down for learners.
+ * onDone fires when the utterance finishes OR is interrupted — callers
+ * must check they still want to act (e.g. the hands-free mic open).
+ */
+export function speak(
+  text: string,
+  opts?: { rate?: number; voiceName?: string; onDone?: () => void }
+) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -74,7 +81,28 @@ export function speak(text: string, opts?: { rate?: number; voiceName?: string }
   const chosen =
     (wanted ? voices.find((v) => v.name === wanted) : undefined) ?? voices[0];
   if (chosen) u.voice = chosen;
+  if (opts?.onDone) {
+    u.onend = opts.onDone;
+    u.onerror = opts.onDone;
+  }
   window.speechSynthesis.speak(u);
+}
+
+/**
+ * Whether the microphone is already allowed, without prompting. The
+ * hands-free mic open must never be the thing that triggers a permission
+ * dialog — that first grant needs a deliberate tap.
+ */
+export async function micPermissionGranted(): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.permissions) return false;
+  try {
+    const status = await navigator.permissions.query({
+      name: "microphone" as PermissionName,
+    });
+    return status.state === "granted";
+  } catch {
+    return false;
+  }
 }
 
 export function hasMandarinVoice(): boolean {
