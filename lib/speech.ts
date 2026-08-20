@@ -3,6 +3,10 @@
 // Browser speech helpers: Mandarin text-to-speech via speechSynthesis
 // and speech recognition via the Web Speech API.
 
+import { scoreMatch } from "./match";
+
+export { normalizeZh, scoreMatch } from "./match";
+
 let cachedVoices: SpeechSynthesisVoice[] | null = null;
 
 export function getMandarinVoices(): SpeechSynthesisVoice[] {
@@ -141,33 +145,6 @@ export function getRecognizer(lang = "zh-CN"): SpeechRecognition | null {
   return rec;
 }
 
-/** Strip punctuation/whitespace for comparing recognized speech to a target. */
-export function normalizeZh(s: string): string {
-  return s.replace(/[\s。，！？、．.,!?'"“”‘’]/g, "");
-}
-
-/**
- * Score recognized speech against the target phrase: percentage of target
- * characters matched in order (longest common subsequence).
- */
-export function scoreMatch(target: string, heard: string): number {
-  const a = normalizeZh(target);
-  const b = normalizeZh(heard);
-  if (!a.length) return 0;
-  if (a === b) return 100;
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
-    new Array<number>(b.length + 1).fill(0)
-  );
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      dp[i][j] =
-        a[i - 1] === b[j - 1]
-          ? dp[i - 1][j - 1] + 1
-          : Math.max(dp[i - 1][j], dp[i][j - 1]);
-    }
-  }
-  return Math.round((dp[a.length][b.length] / a.length) * 100);
-}
 
 /**
  * The best transcript in a recognition event, scored against the target.
@@ -177,10 +154,12 @@ export function scoreMatch(target: string, heard: string): number {
  * Edge's final transcript is often empty with the real text only in the
  * interim results. Returns score -1 when the event carries no text at all.
  */
-export function bestCandidate(
-  target: string,
-  e: { results: ArrayLike<ArrayLike<Pick<SpeechRecognitionAlternative, "transcript">>> }
-): { transcript: string; score: number } {
+type RecognitionResults = {
+  results: ArrayLike<ArrayLike<Pick<SpeechRecognitionAlternative, "transcript">>>;
+};
+
+/** Every non-empty transcript an event carries, plus the joined stream. */
+export function transcriptCandidates(e: RecognitionResults): string[] {
   const candidates: string[] = [];
   let joined = "";
   for (let i = 0; i < e.results.length; i++) {
@@ -191,8 +170,15 @@ export function bestCandidate(
     }
   }
   if (joined) candidates.push(joined);
+  return candidates;
+}
+
+export function bestCandidate(
+  target: string,
+  e: RecognitionResults
+): { transcript: string; score: number } {
   let best = { transcript: "", score: -1 };
-  for (const c of candidates) {
+  for (const c of transcriptCandidates(e)) {
     const s = scoreMatch(target, c);
     if (s > best.score) best = { transcript: c, score: s };
   }
@@ -214,6 +200,8 @@ export function recognizeAttempt(
       transcript: string;
       score: number;
       heardSound: boolean;
+      /** Everything the recognizer transcribed, for deeper rescoring. */
+      candidates: string[];
     }) => void;
     error: (code: string) => void;
     ended: () => void;
@@ -222,7 +210,13 @@ export function recognizeAttempt(
     phase?: (p: "session" | "mic" | "sound" | "speech") => void;
   }
 ): boolean {
-  let best = { transcript: "", score: -1, heardSound: false };
+  const seen = new Set<string>();
+  let best = {
+    transcript: "",
+    score: -1,
+    heardSound: false,
+    candidates: [] as string[],
+  };
   rec.onstart = () => cb.phase?.("session");
   rec.onaudiostart = () => cb.phase?.("mic");
   rec.onsoundstart = () => {
@@ -234,8 +228,11 @@ export function recognizeAttempt(
     cb.phase?.("speech");
   };
   rec.onresult = (e) => {
+    for (const c of transcriptCandidates(e)) seen.add(c);
+    best = { ...best, candidates: [...seen] };
     const c = bestCandidate(target, e);
-    if (c.score > best.score) best = { ...c, heardSound: best.heardSound };
+    if (c.score > best.score)
+      best = { ...best, transcript: c.transcript, score: c.score };
   };
   rec.onnomatch = () => cb.error("nomatch");
   rec.onerror = (e) => {

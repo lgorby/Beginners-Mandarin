@@ -100,7 +100,27 @@ export default function MicPractice({ target, pinyin, en }: Props) {
       phase: (p) => {
         if (p === "mic") ding(); // the mic is truly open — speak now
       },
-      settle: (best) => {
+      settle: async (best) => {
+        if (best.score < 100 && best.candidates.length > 0) {
+          // Rescore by sound (pinyin + tones): a homophone transcript of
+          // a correct pronunciation must not read as failure.
+          try {
+            const res = await fetch(
+              `/api/score?target=${encodeURIComponent(target)}&heard=${encodeURIComponent(best.candidates.join("|"))}`
+            );
+            if (res.ok) {
+              const sound: { transcript: string; score: number } =
+                await res.json();
+              if (sound.score > best.score) {
+                setHeard(sound.transcript);
+                setScore(sound.score);
+                return;
+              }
+            }
+          } catch {
+            // Scoring API unreachable — the character score still stands.
+          }
+        }
         if (best.score >= 0) {
           setHeard(best.transcript);
           setScore(best.score);

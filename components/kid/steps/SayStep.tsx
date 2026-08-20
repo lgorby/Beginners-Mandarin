@@ -31,6 +31,7 @@ export default function SayStep({
     "none"
   );
   const [attempt, setAttempt] = useState(0);
+  const [toneHint, setToneHint] = useState(false);
   const [phase, setPhase] = useState<
     "starting" | "session" | "mic" | "sound" | "speech"
   >("starting");
@@ -80,14 +81,39 @@ export default function SayStep({
         setPhase(p);
         if (p === "mic") ding(); // the mic is truly open — speak now
       },
-      settle: (best) => {
+      settle: async (best) => {
+        // The characters matched exactly, or nothing to rescore: settle now.
+        if (best.score < 100 && best.candidates.length > 0) {
+          // Rescore by sound: the recognizer often writes a correct
+          // pronunciation down as a homophone (吃 → 持), and characters
+          // must never punish that.
+          try {
+            const res = await fetch(
+              `/api/score?target=${encodeURIComponent(target)}&heard=${encodeURIComponent(best.candidates.join("|"))}`
+            );
+            if (res.ok) {
+              const sound: { score: number; toneHint: boolean } =
+                await res.json();
+              if (sound.score > best.score) {
+                setScore(sound.score);
+                setToneHint(sound.toneHint);
+                setTrouble("none");
+                return;
+              }
+            }
+          } catch {
+            // Scoring API unreachable — the character score still stands.
+          }
+        }
         if (best.score >= 0) {
           setScore(best.score);
+          setToneHint(false);
           setTrouble("none");
         } else if (best.heardSound) {
           // Sound arrived but nothing was recognized — that's a "try
           // again", not a false "I didn't hear you".
           setScore(0);
+          setToneHint(false);
           setTrouble("none");
         } else {
           // No sound at all — say so rather than showing nothing.
@@ -190,9 +216,11 @@ export default function SayStep({
         <p className="text-2xl font-bold">
           {score >= 90
             ? "🎉 Perfect!"
-            : score >= 50
-              ? "😊 So close — try again!"
-              : "🙂 Try again!"}
+            : toneHint
+              ? "😊 Right sounds — now make them sing! Listen 🔊 and copy the tune."
+              : score >= 50
+                ? "😊 So close — try again!"
+                : "🙂 Try again!"}
         </p>
       ) : null}
     </StepShell>
