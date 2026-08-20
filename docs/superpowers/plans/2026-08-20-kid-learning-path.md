@@ -1,5 +1,27 @@
 # Kid Learning Path Implementation Plan
 
+> **STATUS: COMPLETE.** All ten tasks were implemented on 2026-08-20 on
+> branch `kid-learning-path` (PR #1). The checkboxes below are left
+> unticked as the original plan text. For what actually shipped and what
+> is still open, read `docs/STATUS.md` first.
+>
+> **Two deviations from this plan, both deliberate:**
+>
+> 1. **Task 2** shipped 16 tests rather than 13. Printing the generated
+>    exercises revealed two defects the passing tests could not see:
+>    every distractor in the course was 你 or 好, and lesson 6 never
+>    asked about 吗 — the word it exists to teach. `pickDistractors` now
+>    draws from sibling sentences' matching slot, and `chooseBlank`
+>    always blanks the taught word in a single-word lesson.
+> 2. **Task 4** hand-authored 6 pictures, not the ~10 this plan assumed,
+>    after checking OpenMoji's real coverage. `scripts/fetch-pics.mjs`
+>    imports `lib/curriculum.ts` directly instead of parsing it with a
+>    regex, since Node 24 strips types natively.
+>
+> A later commit added a front door at `/` and moved the star path to
+> `/learn`; this plan predates that and still describes the star path as
+> living at `/`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the app's seven equally-weighted feature pages with a single guided path that carries a child aged 5–11 from one pictured word to a spoken sentence, keeping every existing page behind a `/grown-ups` door.

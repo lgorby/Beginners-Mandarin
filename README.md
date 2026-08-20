@@ -50,6 +50,11 @@ The full toolkit, unchanged:
 - **🃏 Flashcards** — spaced-repetition review (Leitner boxes, stored in
   localStorage) over all course vocabulary.
 
+## Working on this project
+
+`docs/STATUS.md` is the state of play — what is done, what is unverified,
+and the known open items. Read it before picking the work back up.
+
 ## Run it
 
 ```bash
