@@ -4,11 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
 import { setPinyinVisible } from "@/lib/pinyinPref";
+import { setGentleTones } from "@/lib/tonePref";
 import { usePinyinVisible } from "./usePinyinVisible";
+import { useGentleTones } from "../useGentleTones";
 
 export default function ParentSettings() {
   const [open, setOpen] = useState(false);
   const visible = usePinyinVisible();
+  const gentle = useGentleTones("kid");
 
   return (
     <>
@@ -38,6 +41,23 @@ export default function ParentSettings() {
                 type="checkbox"
                 checked={visible}
                 onChange={(e) => setPinyinVisible(e.target.checked)}
+                className="h-6 w-6"
+              />
+            </label>
+
+            <label className="mt-4 flex items-center justify-between gap-4">
+              <span>
+                Gentle tones
+                <span className="block text-sm text-zinc-500">
+                  On by default — young children earn the win with the
+                  right sounds, and tones are coached playfully. Turn off
+                  to require correct tones for a &quot;Perfect&quot;.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={gentle}
+                onChange={(e) => setGentleTones("kid", e.target.checked)}
                 className="h-6 w-6"
               />
             </label>

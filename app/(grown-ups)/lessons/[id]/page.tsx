@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLesson, LESSONS, lessonWords } from "@/lib/lessons";
 import WordCard from "@/components/WordCard";
+import GentleTonesToggle from "@/components/GentleTonesToggle";
 import MicPractice from "@/components/MicPractice";
 import SpeakButton from "@/components/SpeakButton";
 import PinyinText from "@/components/PinyinText";
@@ -84,6 +85,9 @@ export default async function LessonPage({
           Speak into your microphone — the app checks whether it understood you
           as saying the phrase.
         </p>
+        <div className="mb-4">
+          <GentleTonesToggle />
+        </div>
         <div className="space-y-4">
           {lesson.sentences.slice(0, 2).map((s) => (
             <MicPractice key={s.zh} target={s.zh} pinyin={s.pinyin} en={s.en} />

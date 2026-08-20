@@ -15,6 +15,7 @@ import { useClientValue } from "@/lib/useClientValue";
 import type { Step } from "@/lib/steps";
 import type { SyllableMark } from "@/lib/pronounce";
 import SyllableReport from "../../SyllableReport";
+import { useGentleTones } from "../../useGentleTones";
 
 export default function SayStep({
   step,
@@ -35,6 +36,10 @@ export default function SayStep({
   const [attempt, setAttempt] = useState(0);
   const [toneHint, setToneHint] = useState(false);
   const [report, setReport] = useState<SyllableMark[] | null>(null);
+  // Gentle by default for children: tones stabilise around six or seven
+  // even for native speakers, so right sounds are a win and tones are
+  // coached playfully. A grown-up can switch to strict in settings.
+  const gentle = useGentleTones("kid");
   const [phase, setPhase] = useState<
     "starting" | "session" | "mic" | "sound" | "speech"
   >("starting");
@@ -221,8 +226,12 @@ export default function SayStep({
             {score >= 90
               ? "🎉 Perfect!"
               : toneHint
-                ? "😊 Right sounds — now make them sing! Listen 🔊 and copy the tune."
-                : score >= 50
+                ? gentle
+                  ? // All the sounds were right — for a young child that IS
+                    // the win; the tone nudge rides along as a game.
+                    "🎉 You said it! Now try making it sing 🎵"
+                  : "😊 Right sounds — now make them sing! Listen 🔊 and copy the tune."
+                : score >= (gentle ? 40 : 50)
                   ? "😊 So close — try again!"
                   : "🙂 Try again!"}
           </p>

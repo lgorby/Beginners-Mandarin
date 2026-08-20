@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import GentleTonesToggle from "@/components/GentleTonesToggle";
 import MicCheck from "@/components/MicCheck";
 import MicPractice from "@/components/MicPractice";
 import { LESSONS } from "@/lib/lessons";
@@ -57,6 +58,8 @@ export default function PracticePage() {
           </button>
         ))}
       </div>
+
+      <GentleTonesToggle />
 
       <MicPractice
         key={`${mode}-${index}`}

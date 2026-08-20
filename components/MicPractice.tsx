@@ -13,6 +13,7 @@ import { useClientValue } from "@/lib/useClientValue";
 import type { SyllableMark } from "@/lib/pronounce";
 import PinyinText from "./PinyinText";
 import SyllableReport from "./SyllableReport";
+import { useGentleTones } from "./useGentleTones";
 
 interface Props {
   /** The Mandarin phrase the learner should say */
@@ -49,6 +50,9 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const [heard, setHeard] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [report, setReport] = useState<SyllableMark[] | null>(null);
+  const [toneHint, setToneHint] = useState(false);
+  // Strict by default for adults — drill the tones — but relaxable.
+  const gentle = useGentleTones("adult");
   // Server render (and hydration) assume supported, matching what this
   // component has always shown first; the client then reads the truth.
   const supported = useClientValue(hasSpeechRecognition, true);
@@ -95,6 +99,7 @@ export default function MicPractice({ target, pinyin, en }: Props) {
     setHeard(null);
     setScore(null);
     setReport(null);
+    setToneHint(false);
     setError(null);
     setListening(true);
     // If the service hangs, force the session closed so the button
@@ -117,9 +122,11 @@ export default function MicPractice({ target, pinyin, en }: Props) {
               const sound: {
                 transcript: string;
                 score: number;
+                toneHint: boolean;
                 syllables: SyllableMark[];
               } = await res.json();
               setReport(sound.syllables);
+              setToneHint(sound.toneHint);
               setHeard(
                 sound.score > best.score ? sound.transcript : best.transcript
               );
@@ -198,9 +205,11 @@ export default function MicPractice({ target, pinyin, en }: Props) {
       ? null
       : score >= 90
         ? { emoji: "🎉", msg: "Perfect! The recognizer heard exactly the right phrase.", color: "text-green-600 dark:text-green-400" }
-        : score >= 60
-          ? { emoji: "👍", msg: "Close! Most of it came through — listen again and watch the tones.", color: "text-amber-600 dark:text-amber-400" }
-          : { emoji: "🔁", msg: "Not quite — listen to the slow version and try again.", color: "text-red-600 dark:text-red-400" };
+        : gentle && toneHint
+          ? { emoji: "🎉", msg: "All the right sounds! (Gentle mode — tones not required. Listen again to copy the melody.)", color: "text-green-600 dark:text-green-400" }
+          : score >= 60
+            ? { emoji: "👍", msg: "Close! Most of it came through — listen again and watch the tones.", color: "text-amber-600 dark:text-amber-400" }
+            : { emoji: "🔁", msg: "Not quite — listen to the slow version and try again.", color: "text-red-600 dark:text-red-400" };
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
