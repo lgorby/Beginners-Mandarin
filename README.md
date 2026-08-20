@@ -1,7 +1,32 @@
 # 你好 Mandarin — Beginners Mandarin
 
 A web app that teaches Mandarin Chinese from absolute zero, with sound, speech,
-and visuals throughout:
+and visuals throughout. There are two ways in.
+
+## 🧒 The kids' path (`/`)
+
+A guided route for a child aged roughly 5–11. Ten lessons carry one pictured
+word forward into a spoken sentence, one screen at a time:
+
+    你  →  你好  →  我喝茶  →  你喝茶吗？
+
+Twenty-four words generate over a hundred grammatical sentences, because three
+of the ten lessons teach a **multiplier** rather than vocabulary: 吗 turns any
+sentence into a question, 他/她 swap the subject, and 不 negates it.
+
+- **Pictures first.** Every word has its own SVG; the child taps a picture,
+  never a word list.
+- **No reading required.** Each instruction is spoken aloud in English, so a
+  pre-reader can use the app alone.
+- **Pinyin is off by default** — a six-year-old can no more read `xǐhuan`
+  than 喜欢. A grown-up can switch it on in ⚙️.
+- **Nothing punishes.** No hearts, no timers, no streaks. Stars are earned and
+  never lost, and a wrong tap just reveals the answer and lets you retry.
+- **Locked in order**, so there is never a choice about what to do next.
+
+## 🧑 The grown-up section (`/grown-ups`)
+
+The full toolkit, unchanged:
 
 - **🎵 Tone trainer** — learn the four tones first (the classic mā/má/mǎ/mà
   demo), then an ear-training quiz. Tones are color-coded everywhere in the app
@@ -57,7 +82,16 @@ port 3210 and opens the app in your default browser. Stop it with
   `/api/search?q=...`.
 - `lib/pinyin.ts` — converts numbered pinyin (`ni3 hao3`) to diacritics
   (`nǐ hǎo`) and drives tone coloring.
-- `lib/vocab.ts` / `lib/lessons.ts` — the HSK-1-based beginner curriculum.
+- `lib/vocab.ts` / `lib/lessons.ts` — the HSK-1-based curriculum behind the
+  grown-up section.
+- `lib/curriculum.ts` — the single source of truth for the kids' path.
+  Sentences are stored as **arrays of word references**, not strings, so
+  `lib/steps.ts` can derive every exercise from them and a test can prove no
+  sentence ever uses a word the child has not been taught.
+- `lib/steps.ts` — turns a lesson into its ordered exercise sequence. Pure and
+  deterministic, so adding a lesson is a data edit and never a UI change.
+- `npm test` — Vitest (dev-only; the portable build is unaffected).
+  Run `npm run pics` after adding a word to the kids' curriculum.
 - `lib/speech.ts` — browser text-to-speech (zh-CN voices) and speech
   recognition helpers.
 - `hanzi-writer` — stroke-order animation and tracing quizzes (character data
@@ -79,3 +113,5 @@ port 3210 and opens the app in your default browser. Stop it with
 
 - Dictionary: [CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cedict) (CC BY-SA 4.0)
 - Stroke data & quizzes: [Hanzi Writer](https://hanziwriter.org/) (MIT)
+- Pictures: [OpenMoji](https://openmoji.org/) (CC BY-SA 4.0) — vendored into
+  `public/pics/` by `npm run pics`. Six pictures are original work.
