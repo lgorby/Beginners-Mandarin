@@ -8,6 +8,14 @@
 
 import { pinyinFor } from "./dictionary";
 import { normalizeZh, scoreMatch } from "./match";
+import { toDiacritics } from "./pinyin";
+
+/** How the attempt covered one target syllable. */
+export interface SyllableMark {
+  /** Diacritic pinyin of the target syllable, e.g. "hǎo". */
+  pinyin: string;
+  status: "full" | "sound" | "miss";
+}
 
 export interface PronunciationScore {
   /** The candidate transcript that scored best. */
@@ -16,15 +24,19 @@ export interface PronunciationScore {
   score: number;
   /** True when every syllable was right but one or more tones were off. */
   toneHint: boolean;
+  /** One entry per target syllable, for a visual closeness report. */
+  syllables: SyllableMark[];
 }
 
 interface Syllable {
+  raw: string;
   base: string;
   tone: string;
 }
 
 function syllables(text: string): Syllable[] {
   return pinyinFor(normalizeZh(text)).map((s) => ({
+    raw: s,
     base: s.toLowerCase().replace(/[0-9\s:']/g, ""),
     tone: /[1-5]/.exec(s)?.[0] ?? "5",
   }));
@@ -34,7 +46,11 @@ function syllables(text: string): Syllable[] {
 function align(
   target: Syllable[],
   heard: Syllable[]
-): { matched: number; tonesRight: number } {
+): {
+  matched: number;
+  tonesRight: number;
+  statuses: SyllableMark["status"][];
+} {
   const n = target.length;
   const m = heard.length;
   const dp: number[][] = Array.from({ length: n + 1 }, () =>
@@ -48,13 +64,16 @@ function align(
           : Math.max(dp[i - 1][j], dp[i][j - 1]);
     }
   }
-  // Backtrack one LCS path to count tone agreement on matched syllables.
+  // Backtrack one LCS path to see how each target syllable was covered.
+  const statuses: SyllableMark["status"][] = new Array(n).fill("miss");
   let tonesRight = 0;
   let i = n;
   let j = m;
   while (i > 0 && j > 0) {
     if (target[i - 1].base === heard[j - 1].base) {
-      if (target[i - 1].tone === heard[j - 1].tone) tonesRight++;
+      const full = target[i - 1].tone === heard[j - 1].tone;
+      if (full) tonesRight++;
+      statuses[i - 1] = full ? "full" : "sound";
       i--;
       j--;
     } else if (dp[i - 1][j] >= dp[i][j - 1]) {
@@ -63,7 +82,7 @@ function align(
       j--;
     }
   }
-  return { matched: dp[n][m], tonesRight };
+  return { matched: dp[n][m], tonesRight, statuses };
 }
 
 /** Score each heard candidate against the target; return the best. */
@@ -72,13 +91,25 @@ export function scorePronunciation(
   candidates: string[]
 ): PronunciationScore {
   const t = syllables(target);
-  let best: PronunciationScore = { transcript: "", score: -1, toneHint: false };
+  const missAll = (): SyllableMark[] =>
+    t.map((s) => ({ pinyin: toDiacritics(s.raw), status: "miss" }));
+  let best: PronunciationScore = {
+    transcript: "",
+    score: -1,
+    toneHint: false,
+    syllables: missAll(),
+  };
   for (const c of candidates) {
     if (!normalizeZh(c)) continue;
     let score = scoreMatch(target, c);
     let toneHint = false;
+    let marks = missAll();
     if (t.length > 0) {
-      const { matched, tonesRight } = align(t, syllables(c));
+      const { matched, tonesRight, statuses } = align(t, syllables(c));
+      marks = t.map((s, i) => ({
+        pinyin: toDiacritics(s.raw),
+        status: statuses[i],
+      }));
       const soundScore = Math.round(
         (70 * matched) / t.length + (30 * tonesRight) / t.length
       );
@@ -87,7 +118,8 @@ export function scorePronunciation(
         toneHint = matched === t.length && tonesRight < t.length;
       }
     }
-    if (score > best.score) best = { transcript: c, score, toneHint };
+    if (score > best.score)
+      best = { transcript: c, score, toneHint, syllables: marks };
   }
-  return best.score < 0 ? { transcript: "", score: 0, toneHint: false } : best;
+  return best.score < 0 ? { ...best, score: 0 } : best;
 }

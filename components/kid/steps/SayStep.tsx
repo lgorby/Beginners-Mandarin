@@ -13,6 +13,8 @@ import {
 } from "@/lib/speech";
 import { useClientValue } from "@/lib/useClientValue";
 import type { Step } from "@/lib/steps";
+import type { SyllableMark } from "@/lib/pronounce";
+import SyllableReport from "../../SyllableReport";
 
 export default function SayStep({
   step,
@@ -32,6 +34,7 @@ export default function SayStep({
   );
   const [attempt, setAttempt] = useState(0);
   const [toneHint, setToneHint] = useState(false);
+  const [report, setReport] = useState<SyllableMark[] | null>(null);
   const [phase, setPhase] = useState<
     "starting" | "session" | "mic" | "sound" | "speech"
   >("starting");
@@ -69,6 +72,7 @@ export default function SayStep({
     setListening(true);
     setAttempt((a) => a + 1);
     setPhase("starting");
+    setReport(null);
     // If the service hangs, reset the UI directly — a wedged recognizer
     // may not even honor abort() with an end event.
     watchdog.current = setTimeout(() => {
@@ -82,24 +86,25 @@ export default function SayStep({
         if (p === "mic") ding(); // the mic is truly open — speak now
       },
       settle: async (best) => {
-        // The characters matched exactly, or nothing to rescore: settle now.
-        if (best.score < 100 && best.candidates.length > 0) {
+        if (best.candidates.length > 0) {
           // Rescore by sound: the recognizer often writes a correct
           // pronunciation down as a homophone (吃 → 持), and characters
-          // must never punish that.
+          // must never punish that. Also fetches the per-syllable report.
           try {
             const res = await fetch(
               `/api/score?target=${encodeURIComponent(target)}&heard=${encodeURIComponent(best.candidates.join("|"))}`
             );
             if (res.ok) {
-              const sound: { score: number; toneHint: boolean } =
-                await res.json();
-              if (sound.score > best.score) {
-                setScore(sound.score);
-                setToneHint(sound.toneHint);
-                setTrouble("none");
-                return;
-              }
+              const sound: {
+                score: number;
+                toneHint: boolean;
+                syllables: SyllableMark[];
+              } = await res.json();
+              setReport(sound.syllables);
+              setScore(Math.max(best.score, sound.score));
+              setToneHint(sound.toneHint && sound.score >= best.score);
+              setTrouble("none");
+              return;
             }
           } catch {
             // Scoring API unreachable — the character score still stands.
@@ -211,17 +216,18 @@ export default function SayStep({
             : "🙉 I didn't hear you — tap 🎤 and try again"}
         </p>
       ) : score !== null ? (
-        // A pre-reader can't parse "67%", and a one-word target can only
-        // score 0 or 100 anyway — tiers say it better than numbers.
-        <p className="text-2xl font-bold">
-          {score >= 90
-            ? "🎉 Perfect!"
-            : toneHint
-              ? "😊 Right sounds — now make them sing! Listen 🔊 and copy the tune."
-              : score >= 50
-                ? "😊 So close — try again!"
-                : "🙂 Try again!"}
-        </p>
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-2xl font-bold">
+            {score >= 90
+              ? "🎉 Perfect!"
+              : toneHint
+                ? "😊 Right sounds — now make them sing! Listen 🔊 and copy the tune."
+                : score >= 50
+                  ? "😊 So close — try again!"
+                  : "🙂 Try again!"}
+          </p>
+          {report && <SyllableReport syllables={report} score={score} />}
+        </div>
       ) : null}
     </StepShell>
   );

@@ -10,7 +10,9 @@ import {
   stopSpeaking,
 } from "@/lib/speech";
 import { useClientValue } from "@/lib/useClientValue";
+import type { SyllableMark } from "@/lib/pronounce";
 import PinyinText from "./PinyinText";
+import SyllableReport from "./SyllableReport";
 
 interface Props {
   /** The Mandarin phrase the learner should say */
@@ -46,6 +48,7 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
+  const [report, setReport] = useState<SyllableMark[] | null>(null);
   // Server render (and hydration) assume supported, matching what this
   // component has always shown first; the client then reads the truth.
   const supported = useClientValue(hasSpeechRecognition, true);
@@ -91,6 +94,7 @@ export default function MicPractice({ target, pinyin, en }: Props) {
     stopSpeaking();
     setHeard(null);
     setScore(null);
+    setReport(null);
     setError(null);
     setListening(true);
     // If the service hangs, force the session closed so the button
@@ -101,21 +105,26 @@ export default function MicPractice({ target, pinyin, en }: Props) {
         if (p === "mic") ding(); // the mic is truly open — speak now
       },
       settle: async (best) => {
-        if (best.score < 100 && best.candidates.length > 0) {
+        if (best.candidates.length > 0) {
           // Rescore by sound (pinyin + tones): a homophone transcript of
-          // a correct pronunciation must not read as failure.
+          // a correct pronunciation must not read as failure. Also
+          // fetches the per-syllable report.
           try {
             const res = await fetch(
               `/api/score?target=${encodeURIComponent(target)}&heard=${encodeURIComponent(best.candidates.join("|"))}`
             );
             if (res.ok) {
-              const sound: { transcript: string; score: number } =
-                await res.json();
-              if (sound.score > best.score) {
-                setHeard(sound.transcript);
-                setScore(sound.score);
-                return;
-              }
+              const sound: {
+                transcript: string;
+                score: number;
+                syllables: SyllableMark[];
+              } = await res.json();
+              setReport(sound.syllables);
+              setHeard(
+                sound.score > best.score ? sound.transcript : best.transcript
+              );
+              setScore(Math.max(best.score, sound.score));
+              return;
             }
           } catch {
             // Scoring API unreachable — the character score still stands.
@@ -253,6 +262,11 @@ export default function MicPractice({ target, pinyin, en }: Props) {
             </span>
           </div>
           <div className="mt-1 text-sm text-zinc-500">{feedback.msg}</div>
+          {report && (
+            <div className="mt-3">
+              <SyllableReport syllables={report} score={score ?? 0} />
+            </div>
+          )}
         </div>
       )}
 
