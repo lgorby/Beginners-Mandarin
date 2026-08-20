@@ -258,22 +258,24 @@ each word's `pic` field, copies only those SVGs out of the package into
 `openmoji` dependency is dev-only.
 
 The path needs **26 pictures** — 24 core words plus 谢谢 and 再见. Of
-these, roughly **16 come from OpenMoji** and **10 are hand-authored**
-(below). A `PicTile` with a missing file falls back to the word's
-emoji, so a broken asset degrades rather than crashes.
+these, **20 come from OpenMoji** and **6 are hand-authored** (below). A
+`PicTile` with a missing file falls back to the word's emoji, so a
+broken asset degrades rather than crashes.
 
-**Hand-authored (~10):** the words no emoji set expresses.
+**Hand-authored (6):** only where OpenMoji genuinely cannot do the job.
 
-- 我 / 你 / 他 / 她 — must be visually *contrastive*, not merely
-  correct. 🙋 and 👉 do not read as "me" versus "you" to a six-year-old.
-  Drawn as a consistent set: a figure pointing at itself versus a
-  figure pointing outward.
-- 喜欢 — a heart above a smiling face.
+- 我 / 你 — must be visually *contrastive*, not merely correct. 🙋 and
+  👉 do not read as "me" versus "you" to a six-year-old. Drawn as a
+  matched pair: a figure pointing at its own chest versus a figure
+  pointing outward at the viewer.
+- 大 / 小 — the same matched-pair reasoning. The contrast *is* the
+  picture, so each shows both sizes with one highlighted.
+- 吃 — an open mouth taking food (😋 reads as "tasty", not "to eat").
 - 吗 — a speech bubble with a question mark.
-- 去 — a figure walking toward an arrow.
-- 大 / 小 — the same object at two sizes, side by side, so the contrast
-  is the picture.
-- 吃 — an open mouth with food (😋 reads as "tasty", not "to eat").
+
+Everything else OpenMoji covers well enough that a bespoke drawing would
+add inconsistency rather than clarity: 😍 for 喜欢, 🚶 for 去, and 👨/👩
+for 他/她, where emoji nails the distinction the lesson teaches.
 
 These are original drawings, not modifications of OpenMoji artwork, so
 CC BY-SA share-alike does not extend to them.
