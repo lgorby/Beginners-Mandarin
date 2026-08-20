@@ -1,80 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
 import { speak } from "@/lib/speech";
+import {
+  getSrsSessionServerSnapshot,
+  getSrsSessionSnapshot,
+  learnedCount,
+  rateCurrentCard,
+  subscribeSrsSession,
+  type Grade,
+} from "@/lib/srs";
 import { VOCAB } from "@/lib/vocab";
 
-// Simple spaced repetition (Leitner boxes) stored in localStorage.
-// Box 0 = new/again; higher boxes are reviewed at longer intervals.
-const INTERVALS_DAYS = [0, 1, 3, 7, 16, 35];
-const STORAGE_KEY = "mandarin-srs-v1";
-
-interface CardState {
-  box: number;
-  due: number; // epoch ms
-}
-
-type Store = Record<string, CardState>;
-
-function loadStore(): Store {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as Store;
-  } catch {
-    return {};
-  }
-}
-
-function saveStore(s: Store) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-}
-
 export default function FlashcardsPage() {
-  const [store, setStore] = useState<Store | null>(null);
-  const [queue, setQueue] = useState<string[]>([]);
+  // The SRS session lives in lib/srs.ts, read via useSyncExternalStore —
+  // no setState-in-effect, and the server render gets a neutral snapshot
+  // so hydration matches (same pattern as the kid path's progress).
+  const session = useSyncExternalStore(
+    subscribeSrsSession,
+    getSrsSessionSnapshot,
+    getSrsSessionServerSnapshot
+  );
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
 
-  useEffect(() => {
-    const s = loadStore();
-    setStore(s);
-    const now = Date.now();
-    const due = VOCAB.filter((w) => {
-      const st = s[w.zh];
-      return !st || st.due <= now;
-    }).map((w) => w.zh);
-    // New cards last, capped so a session stays short.
-    setQueue(due.slice(0, 20));
-  }, []);
+  const current = VOCAB.find((w) => w.zh === session.queue[0]);
 
-  const current = useMemo(
-    () => VOCAB.find((w) => w.zh === queue[0]),
-    [queue]
-  );
-
-  const rate = (grade: "again" | "good" | "easy") => {
-    if (!current || !store) return;
-    const prev = store[current.zh] ?? { box: 0, due: 0 };
-    const box =
-      grade === "again"
-        ? 0
-        : Math.min(prev.box + (grade === "easy" ? 2 : 1), INTERVALS_DAYS.length - 1);
-    const days = INTERVALS_DAYS[box];
-    const due =
-      grade === "again"
-        ? Date.now() + 60_000 // see it again this session
-        : Date.now() + days * 24 * 60 * 60 * 1000;
-    const next: Store = { ...store, [current.zh]: { box, due } };
-    setStore(next);
-    saveStore(next);
+  const rate = (grade: Grade) => {
+    rateCurrentCard(grade);
     setFlipped(false);
     setReviewed((r) => r + 1);
-    setQueue((q) => {
-      const rest = q.slice(1);
-      // "Again" cards return to the end of today's queue.
-      return grade === "again" ? [...rest, q[0]] : rest;
-    });
   };
 
   const flip = () => {
@@ -83,11 +40,9 @@ export default function FlashcardsPage() {
     speak(current.zh, { rate: 0.85 });
   };
 
-  const learned = store
-    ? Object.values(store).filter((c) => c.box >= 2).length
-    : 0;
+  const learned = learnedCount(session.store);
 
-  if (store === null) {
+  if (!session.ready) {
     return <p className="text-center text-zinc-400">Loading…</p>;
   }
 
@@ -104,7 +59,7 @@ export default function FlashcardsPage() {
       </div>
 
       <div className="flex justify-between text-sm text-zinc-500">
-        <span>📥 Due now: {queue.length}</span>
+        <span>📥 Due now: {session.queue.length}</span>
         <span>✅ Reviewed today: {reviewed}</span>
         <span>
           🧠 Learned: {learned}/{VOCAB.length}

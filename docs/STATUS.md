@@ -24,7 +24,7 @@ npm run dev            # http://localhost:3000
 | `npm run pics` | Re-vendor OpenMoji SVGs — run after adding a word |
 | `npx next build` | Production build |
 | `npx tsc --noEmit` | Typecheck — **must run after a build**, see gotchas |
-| `npx eslint .` | Lint — 2 known errors, see below |
+| `npx eslint .` | Lint — clean |
 
 ## What exists now
 
@@ -82,16 +82,14 @@ rests on.
 
 ## Open items
 
-**Two known lint errors, deliberately left.** Both are
-`react-hooks/set-state-in-effect`, both pre-date this work:
-
-- `app/(grown-ups)/dictionary/page.tsx` — clears search results inside
-  the debounce effect. Fix is to move the empty-query branch into the
-  input's change handler.
-- `app/(grown-ups)/flashcards/page.tsx` — builds the SRS review queue
-  from `localStorage` and `Date.now()` on mount. This one needs the
-  queue logic restructured, and **there are no tests over the SRS
-  behaviour**. Write tests first; do not refactor it blind.
+**The lint debt is paid.** The two long-standing
+`react-hooks/set-state-in-effect` errors are fixed: the dictionary
+clears results in the input's change handler, and the flashcards' SRS
+moved to `lib/srs.ts` — pure, tested functions (`lib/__tests__/srs.test.ts`)
+plus a `useSyncExternalStore` session store, per the STATUS instruction
+to write tests before touching it. One deliberate behaviour change:
+the review queue now genuinely puts due cards before new ones (the old
+code documented that order but never sorted).
 
 **Counting is not taught.** Deliberate — a counted noun needs a measure
 word (三只猫, not 三猫), which is exactly the complexity this path

@@ -19,19 +19,23 @@ export default function DictionaryPage() {
   const [searched, setSearched] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (debounce.current) clearTimeout(debounce.current);
-    if (!query.trim()) {
+  // Clearing happens in the change handler, not here — setState inside
+  // the effect body is the pattern React 19's lint rejects.
+  const onQueryChange = (value: string) => {
+    setQuery(value);
+    if (!value.trim()) {
       setResults([]);
       setSearched(false);
-      return;
     }
+  };
+
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) return; // the change handler already cleared the results
     debounce.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/search?q=${encodeURIComponent(query.trim())}`
-        );
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
         const data = (await res.json()) as { results: Result[] };
         setResults(data.results);
         setSearched(true);
@@ -56,7 +60,7 @@ export default function DictionaryPage() {
       <input
         type="search"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Try: hello, water, cat, xie xie, 你好…"
         autoFocus
         className="mt-5 w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-lg shadow-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-zinc-700 dark:bg-zinc-900"

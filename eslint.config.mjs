@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Portable Windows build output (gitignored, but present locally).
+    "dist-portable/**",
   ]),
 ]);
 
