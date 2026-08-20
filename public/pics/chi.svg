@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="to eat">
+  <path d="M12 46 a38 38 0 0 0 76 0 z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3"/>
+  <path d="M12 46 h76" stroke="#7f1d1d" stroke-width="4" stroke-linecap="round"/>
+  <path d="M24 60 a26 12 0 0 0 52 0 z" fill="#fca5a5"/>
+  <circle cx="50" cy="24" r="12" fill="#84cc16" stroke="#3f6212" stroke-width="3"/>
+  <path d="M50 12 v-6" stroke="#3f6212" stroke-width="3" stroke-linecap="round"/>
+</svg>
