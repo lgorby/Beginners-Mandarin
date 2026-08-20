@@ -27,6 +27,11 @@ export function isUnlocked(p: Progress, id: string): boolean {
   return index <= lessonIndex(currentLessonId(p));
 }
 
+/** How many lessons are finished. Replaying one does not count twice. */
+export function completedCount(p: Progress): number {
+  return LESSONS.filter((l) => Boolean(p.completed[l.id])).length;
+}
+
 export function starsFor(p: Progress, id: string): number {
   return p.completed[id]?.stars ?? 0;
 }

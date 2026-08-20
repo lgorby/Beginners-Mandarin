@@ -1,5 +1,5 @@
-import StarPath from "@/components/kid/StarPath";
+import PathChooser from "@/components/PathChooser";
 
 export default function Home() {
-  return <StarPath />;
+  return <PathChooser />;
 }

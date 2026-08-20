@@ -22,7 +22,7 @@ export default function GrownUpsLayout({
       </main>
       <footer className="border-t border-zinc-200 py-4 text-center text-xs text-zinc-400 dark:border-zinc-800">
         <Link href="/" className="hover:underline">
-          ← Back to the kids&apos; path
+          ← Home
         </Link>
         <span className="mx-2">·</span>
         Dictionary data: CC-CEDICT (CC BY-SA 4.0) · Stroke data: Hanzi Writer ·

@@ -66,7 +66,7 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
             </Link>
           )}
           <Link
-            href="/"
+            href="/learn"
             className="rounded-full border-4 border-zinc-200 px-8 py-4 text-lg font-semibold dark:border-zinc-700"
           >
             Back to the map
@@ -84,7 +84,7 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
       <div className="flex items-center gap-3 px-4 py-3">
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/learn")}
           aria-label="Close the lesson"
           className="text-2xl text-zinc-400"
         >

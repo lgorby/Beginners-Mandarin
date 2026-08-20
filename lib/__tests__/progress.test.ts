@@ -4,6 +4,7 @@ import {
   PROGRESS_KEY,
   awardStars,
   completeLesson,
+  completedCount,
   currentLessonId,
   getProgressServerSnapshot,
   getProgressSnapshot,
@@ -43,6 +44,24 @@ describe("currentLessonId", () => {
   it("stays on the last lesson once everything is done", () => {
     const p = LESSONS.reduce((acc, l) => completeLesson(acc, l.id, 3), EMPTY);
     expect(currentLessonId(p)).toBe(LESSONS[LESSONS.length - 1].id);
+  });
+});
+
+describe("completedCount", () => {
+  it("is zero on a fresh install", () => {
+    expect(completedCount(EMPTY)).toBe(0);
+  });
+
+  it("counts finished lessons", () => {
+    let p = completeLesson(EMPTY, LESSONS[0].id, 1);
+    p = completeLesson(p, LESSONS[1].id, 3);
+    expect(completedCount(p)).toBe(2);
+  });
+
+  it("does not double-count a replayed lesson", () => {
+    let p = completeLesson(EMPTY, LESSONS[0].id, 1);
+    p = completeLesson(p, LESSONS[0].id, 3);
+    expect(completedCount(p)).toBe(1);
   });
 });
 

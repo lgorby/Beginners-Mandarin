@@ -6,6 +6,7 @@ import PicTile from "./PicTile";
 import ParentSettings from "./ParentSettings";
 import { LESSONS } from "@/lib/curriculum";
 import {
+  completedCount,
   currentLessonId,
   getProgressServerSnapshot,
   getProgressSnapshot,
@@ -26,11 +27,18 @@ export default function StarPath() {
 
   const current = currentLessonId(progress);
   const currentLesson = LESSONS.find((l) => l.id === current)!;
-  const done = Object.keys(progress.completed).length;
+  const done = completedCount(progress);
   const finished = done === LESSONS.length;
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
+      <Link
+        href="/"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-500 hover:underline"
+      >
+        ← Home
+      </Link>
+
       <Link
         href={`/learn/${current}`}
         className="flex items-center gap-4 rounded-3xl bg-red-600 p-5 text-white shadow-lg"
