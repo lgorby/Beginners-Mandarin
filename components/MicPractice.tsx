@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getRecognizer, scoreMatch, speak } from "@/lib/speech";
+import { getRecognizer, hasSpeechRecognition, scoreMatch, speak } from "@/lib/speech";
+import { useClientValue } from "@/lib/useClientValue";
 import PinyinText from "./PinyinText";
 
 interface Props {
@@ -38,7 +39,9 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
-  const [supported, setSupported] = useState(true);
+  // Server render (and hydration) assume supported, matching what this
+  // component has always shown first; the client then reads the truth.
+  const supported = useClientValue(hasSpeechRecognition, true);
   const [error, setError] = useState<string | null>(null);
   const recRef = useRef<SpeechRecognition | null>(null);
 
@@ -50,7 +53,6 @@ export default function MicPractice({ target, pinyin, en }: Props) {
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setSupported(getRecognizer() !== null);
     return () => {
       recRef.current?.abort();
       if (stopTimerRef.current) clearTimeout(stopTimerRef.current);

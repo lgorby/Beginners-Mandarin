@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import SentenceRow from "../SentenceRow";
 import StepShell from "../StepShell";
-import { getRecognizer, scoreMatch, speak } from "@/lib/speech";
+import {
+  getRecognizer,
+  hasSpeechRecognition,
+  scoreMatch,
+  speak,
+} from "@/lib/speech";
+import { useClientValue } from "@/lib/useClientValue";
 import type { Step } from "@/lib/steps";
 
 export default function SayStep({
@@ -14,8 +20,9 @@ export default function SayStep({
   onDone: (r: { correct: boolean; spoken: boolean }) => void;
 }) {
   const target = step.words.join("");
-  // Lazy initialiser — never setState synchronously inside an effect.
-  const [supported] = useState(() => getRecognizer() !== null);
+  // A lazy useState initialiser would run during the server render too and
+  // hydrate to a different value; this reads the browser after hydration.
+  const supported = useClientValue(hasSpeechRecognition, false);
   const [listening, setListening] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const recRef = useRef<SpeechRecognition | null>(null);

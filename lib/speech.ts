@@ -81,13 +81,25 @@ export function hasMandarinVoice(): boolean {
 
 type RecognitionCtor = new () => SpeechRecognition;
 
-export function getRecognizer(): SpeechRecognition | null {
-  if (typeof window === "undefined") return null;
+function recognitionCtor(): RecognitionCtor | undefined {
+  if (typeof window === "undefined") return undefined;
   const w = window as unknown as {
     SpeechRecognition?: RecognitionCtor;
     webkitSpeechRecognition?: RecognitionCtor;
   };
-  const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
+/**
+ * Whether this browser can score speech at all. Cheap enough to call on
+ * every render, unlike getRecognizer(), which constructs a recognizer.
+ */
+export function hasSpeechRecognition(): boolean {
+  return recognitionCtor() !== undefined;
+}
+
+export function getRecognizer(): SpeechRecognition | null {
+  const Ctor = recognitionCtor();
   if (!Ctor) return null;
   const rec = new Ctor();
   rec.lang = "zh-CN";
