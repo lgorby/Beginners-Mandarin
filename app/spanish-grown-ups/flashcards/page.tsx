@@ -16,7 +16,7 @@ export default function SpanishFlashcardsPage() {
   const session = useSyncExternalStore(
     spanishSrs.subscribe,
     spanishSrs.getSnapshot,
-    spanishSrs.getServerSnapshot
+    spanishSrs.getServerSnapshot,
   );
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
@@ -47,18 +47,18 @@ export default function SpanishFlashcardsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">🃏 Flashcard Review</h1>
-        <p className="mt-1 text-zinc-500">
-          See the English, say the Spanish out loud, then flip to check.
-          Cards you miss come back sooner; cards you know come back later —
+    <div className="mx-auto flex h-full max-w-xl flex-col gap-3">
+      <div className="shrink-0">
+        <h1 className="text-xl font-bold sm:text-3xl">🃏 Flashcard Review</h1>
+        <p className="short-hide mt-1 text-sm text-zinc-500">
+          See the English, say the Spanish out loud, then flip to check. Cards
+          you miss come back sooner; cards you know come back later —
           that&apos;s spaced repetition, the most proven way to memorize
           vocabulary.
         </p>
       </div>
 
-      <div className="flex justify-between text-sm text-zinc-500">
+      <div className="flex shrink-0 justify-between text-sm text-zinc-500">
         <span>📥 Due now: {session.queue.length}</span>
         <span>✅ Reviewed today: {reviewed}</span>
         <span>
@@ -67,7 +67,7 @@ export default function SpanishFlashcardsPage() {
       </div>
 
       {!current ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-10 text-center dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-center sm:p-10 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="text-5xl">🎉</div>
           <p className="mt-3 text-lg font-semibold">All caught up!</p>
           <p className="mt-1 text-sm text-zinc-500">
@@ -82,10 +82,12 @@ export default function SpanishFlashcardsPage() {
             tabIndex={0}
             onClick={() => !flipped && flip()}
             onKeyDown={(e) => e.key === "Enter" && !flipped && flip()}
-            className="block w-full cursor-pointer rounded-3xl border border-zinc-200 bg-white p-10 text-center shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+            className="block min-h-0 w-full flex-1 cursor-pointer overflow-y-auto rounded-3xl border border-zinc-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md sm:p-10 dark:border-zinc-800 dark:bg-zinc-900"
           >
-            <div className="text-5xl">{current.emoji}</div>
-            <div className="mt-2 text-2xl font-semibold">{current.en}</div>
+            <div className="text-4xl sm:text-5xl">{current.emoji}</div>
+            <div className="mt-2 text-xl font-semibold sm:text-2xl">
+              {current.en}
+            </div>
             {flipped ? (
               <div className="mt-4 border-t border-dashed border-zinc-300 pt-4 dark:border-zinc-700">
                 <div className="text-5xl" lang="es-MX">
@@ -113,25 +115,25 @@ export default function SpanishFlashcardsPage() {
           </div>
 
           {flipped && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid shrink-0 grid-cols-3 gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => rate("again")}
-                className="rounded-xl bg-red-100 py-3 font-semibold text-red-700 transition hover:bg-red-200 dark:bg-red-950 dark:text-red-300"
+                className="rounded-xl bg-red-100 py-2 font-semibold text-red-700 sm:py-3 transition hover:bg-red-200 dark:bg-red-950 dark:text-red-300"
               >
                 ❌ Again
               </button>
               <button
                 type="button"
                 onClick={() => rate("good")}
-                className="rounded-xl bg-amber-100 py-3 font-semibold text-amber-700 transition hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300"
+                className="rounded-xl bg-amber-100 py-2 font-semibold text-amber-700 sm:py-3 transition hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300"
               >
                 👍 Good
               </button>
               <button
                 type="button"
                 onClick={() => rate("easy")}
-                className="rounded-xl bg-green-100 py-3 font-semibold text-green-700 transition hover:bg-green-200 dark:bg-green-950 dark:text-green-300"
+                className="rounded-xl bg-green-100 py-2 font-semibold text-green-700 sm:py-3 transition hover:bg-green-200 dark:bg-green-950 dark:text-green-300"
               >
                 ✨ Easy
               </button>

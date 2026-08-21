@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HanziStroke from "@/components/HanziStroke";
+import Panes from "@/components/Panes";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
 
@@ -48,194 +49,213 @@ const MA_FAMILY = [
 ];
 
 export default function StrokesPage() {
-  return (
-    <div className="mx-auto max-w-3xl space-y-12">
-      <div>
-        <h1 className="text-3xl font-bold">🖌️ What the Lines Mean</h1>
-        <p className="mt-2 text-zinc-600 dark:text-zinc-300">
-          Chinese characters look complicated, but they aren&apos;t random
-          drawings. Every character is built from a handful of{" "}
-          <strong>basic strokes</strong>, written in a{" "}
-          <strong>fixed order</strong>, and grouped into{" "}
-          <strong>components that carry meaning</strong>. Learn these three
-          ideas and characters stop being pictures — they become words you can
-          read.
-        </p>
+  const strokes = (
+    <section>
+      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-300">
+        Chinese characters look complicated, but they aren&apos;t random
+        drawings. Every character is built from a handful of{" "}
+        <strong>basic strokes</strong>, written in a{" "}
+        <strong>fixed order</strong>, and grouped into{" "}
+        <strong>components that carry meaning</strong>.
+      </p>
+      <p className="short-hide mb-3 text-sm text-zinc-500">
+        Almost every line in every character is one of these eight. Tap 🔊 to
+        hear each stroke&apos;s Chinese name, and ▶ Animate to watch the example
+        character being written.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {STROKES.map((s) => (
+          <div
+            key={s.zh}
+            className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            <svg
+              viewBox="0 0 100 100"
+              className="h-14 w-14 shrink-0 rounded-xl bg-zinc-50 dark:bg-zinc-800"
+              aria-hidden
+            >
+              <path
+                d={s.path}
+                fill="none"
+                stroke="#dc2626"
+                strokeWidth="9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div className="min-w-0 flex-1 basis-44">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-2xl" lang="zh-CN">
+                  {s.zh}
+                </span>
+                <PinyinText pinyin={s.pinyin} className="font-medium" />
+                <span className="text-sm text-zinc-500">{s.en}</span>
+                <SpeakButton text={s.zh} size="sm" />
+              </div>
+              <p className="text-xs text-zinc-500">{s.how}</p>
+              <p className="mt-1 text-xs text-zinc-400">
+                See it in:{" "}
+                <span
+                  lang="zh-CN"
+                  className="text-base text-zinc-600 dark:text-zinc-300"
+                >
+                  {s.example}
+                </span>{" "}
+                ({s.exEn})
+              </p>
+            </div>
+            <HanziStroke char={s.example} size={90} />
+          </div>
+        ))}
       </div>
+    </section>
+  );
 
-      <section>
-        <h2 className="mb-1 text-xl font-bold">1 · The 8 Basic Strokes</h2>
-        <p className="mb-4 text-sm text-zinc-500">
-          Almost every line in every character is one of these eight. Tap 🔊 to
-          hear each stroke&apos;s Chinese name, and ▶ Animate to watch the
-          example character being written.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {STROKES.map((s) => (
-            <div
-              key={s.zh}
-              className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <svg
-                viewBox="0 0 100 100"
-                className="h-16 w-16 shrink-0 rounded-xl bg-zinc-50 dark:bg-zinc-800"
-                aria-hidden
-              >
-                <path
-                  d={s.path}
-                  fill="none"
-                  stroke="#dc2626"
-                  strokeWidth="9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div className="min-w-0 flex-1 basis-44">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-2xl" lang="zh-CN">
-                    {s.zh}
-                  </span>
-                  <PinyinText pinyin={s.pinyin} className="font-medium" />
-                  <span className="text-sm text-zinc-500">{s.en}</span>
-                  <SpeakButton text={s.zh} size="sm" />
-                </div>
-                <p className="text-xs text-zinc-500">{s.how}</p>
-                <p className="mt-1 text-xs text-zinc-400">
-                  See it in: <span lang="zh-CN" className="text-base text-zinc-600 dark:text-zinc-300">{s.example}</span>{" "}
-                  ({s.exEn})
-                </p>
-              </div>
-              <HanziStroke char={s.example} size={90} />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-1 text-xl font-bold">2 · The Order of the Lines</h2>
-        <p className="mb-4 text-sm text-zinc-500">
-          Strokes are always written in the same order — it makes characters
-          faster to write, easier to remember, and legible in handwriting.
-          Six rules cover nearly everything:
-        </p>
-        <ol className="space-y-2">
-          {RULES.map((r, i) => (
-            <li
-              key={r.rule}
-              className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm dark:bg-zinc-900"
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600 text-sm font-bold text-white">
-                {i + 1}
+  const order = (
+    <section>
+      <p className="mb-4 text-sm text-zinc-500">
+        Strokes are always written in the same order — it makes characters
+        faster to write, easier to remember, and legible in handwriting. Six
+        rules cover nearly everything:
+      </p>
+      <ol className="space-y-2">
+        {RULES.map((r, i) => (
+          <li
+            key={r.rule}
+            className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm dark:bg-zinc-900"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600 text-sm font-bold text-white">
+              {i + 1}
+            </span>
+            <span>
+              <span className="font-semibold">{r.rule}</span>
+              <span className="block text-sm text-zinc-500" lang="zh-CN">
+                {r.example}
               </span>
-              <span>
-                <span className="font-semibold">{r.rule}</span>
-                <span className="block text-sm text-zinc-500" lang="zh-CN">
-                  {r.example}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-3 text-sm text-zinc-500">
-          Test these on the{" "}
-          <Link href="/characters" className="font-semibold text-red-600 underline">
-            ✍️ Write page
-          </Link>{" "}
-          — the tracing quiz only accepts strokes drawn in the right order.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="mb-1 text-xl font-bold">3 · Lines That Carry Meaning: Radicals</h2>
-        <p className="mb-4 text-sm text-zinc-500">
-          Groups of strokes form <strong>radicals</strong> — reusable parts
-          that hint at a character&apos;s meaning. Spot the radical and you can
-          often guess what a new character is about. Here are ten of the most
-          useful ones:
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {RADICALS.map((r) => (
-            <div
-              key={r.glyph}
-              className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <div className="flex items-baseline gap-3">
-                <span className="text-4xl text-red-600" lang="zh-CN">
-                  {r.glyph}
-                </span>
-                <span className="font-semibold">{r.meaning}</span>
-                {r.note && (
-                  <span className="text-xs text-zinc-400">({r.note})</span>
-                )}
-              </div>
-              <ul className="mt-2 space-y-1">
-                {r.examples.map((ex) => (
-                  <li key={ex.zh} className="flex items-center gap-2 text-sm">
-                    <SpeakButton text={ex.zh} size="sm" />
-                    <span className="text-xl" lang="zh-CN">
-                      {ex.zh}
-                    </span>
-                    <PinyinText pinyin={ex.pinyin} className="font-medium" />
-                    <span className="text-zinc-500">{ex.en}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border-2 border-red-200 bg-white p-6 dark:border-red-900 dark:bg-zinc-900">
-        <h2 className="text-xl font-bold">4 · Putting It Together: the 马 Family</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Most characters combine a <strong>meaning part</strong> (the radical)
-          with a <strong>sound part</strong>. Remember mā / má / mǎ / mà from
-          the{" "}
-          <Link href="/tones" className="font-semibold text-red-600 underline">
-            tones page
-          </Link>
-          ? Here&apos;s how the lines spell those words:
-        </p>
-        <ul className="mt-4 space-y-3">
-          {MA_FAMILY.map((m) => (
-            <li
-              key={m.zh}
-              className="flex items-center gap-4 rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800"
-            >
-              <SpeakButton text={m.zh} />
-              <span className="w-12 text-center text-4xl" lang="zh-CN">
-                {m.zh}
-              </span>
-              <span className="min-w-0">
-                <PinyinText pinyin={m.pinyin} className="text-lg font-semibold" />
-                <span className="ml-2 text-sm text-zinc-500">{m.en}</span>
-                <span className="block text-sm text-zinc-500">{m.parts}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">
-          The radical tells you the <em>meaning family</em> (woman, mouth), the
-          shared part 马 tells you the <em>sound</em> (&ldquo;ma&rdquo;), and
-          the <strong>tone</strong> tells you the exact word. That&apos;s the
-          whole system — lines → strokes → radicals → characters.
-        </p>
-      </section>
-
-      <div className="flex flex-wrap justify-center gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-sm text-zinc-500">
+        Test these on the{" "}
         <Link
           href="/characters"
-          className="rounded-full bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700"
+          className="font-semibold text-red-600 underline"
+        >
+          ✍️ Write page
+        </Link>{" "}
+        — the tracing quiz only accepts strokes drawn in the right order.
+      </p>
+    </section>
+  );
+
+  const radicals = (
+    <section>
+      <p className="mb-4 text-sm text-zinc-500">
+        Groups of strokes form <strong>radicals</strong> — reusable parts that
+        hint at a character&apos;s meaning. Spot the radical and you can often
+        guess what a new character is about. Here are ten of the most useful
+        ones:
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {RADICALS.map((r) => (
+          <div
+            key={r.glyph}
+            className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl text-red-600" lang="zh-CN">
+                {r.glyph}
+              </span>
+              <span className="font-semibold">{r.meaning}</span>
+              {r.note && (
+                <span className="text-xs text-zinc-400">({r.note})</span>
+              )}
+            </div>
+            <ul className="mt-2 space-y-1">
+              {r.examples.map((ex) => (
+                <li key={ex.zh} className="flex items-center gap-2 text-sm">
+                  <SpeakButton text={ex.zh} size="sm" />
+                  <span className="text-xl" lang="zh-CN">
+                    {ex.zh}
+                  </span>
+                  <PinyinText pinyin={ex.pinyin} className="font-medium" />
+                  <span className="text-zinc-500">{ex.en}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  const family = (
+    <section className="rounded-2xl border-2 border-red-200 bg-white p-4 sm:p-6 dark:border-red-900 dark:bg-zinc-900">
+      <p className="text-sm text-zinc-500">
+        Most characters combine a <strong>meaning part</strong> (the radical)
+        with a <strong>sound part</strong>. Remember mā / má / mǎ / mà from the{" "}
+        <Link href="/tones" className="font-semibold text-red-600 underline">
+          tones page
+        </Link>
+        ? Here&apos;s how the lines spell those words:
+      </p>
+      <ul className="mt-3 space-y-2">
+        {MA_FAMILY.map((m) => (
+          <li
+            key={m.zh}
+            className="flex items-center gap-3 rounded-xl bg-zinc-50 p-2 sm:gap-4 sm:p-3 dark:bg-zinc-800"
+          >
+            <SpeakButton text={m.zh} />
+            <span className="w-12 text-center text-3xl" lang="zh-CN">
+              {m.zh}
+            </span>
+            <span className="min-w-0">
+              <PinyinText
+                pinyin={m.pinyin}
+                className="font-semibold sm:text-lg"
+              />
+              <span className="ml-2 text-sm text-zinc-500">{m.en}</span>
+              <span className="block text-sm text-zinc-500">{m.parts}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="short-hide mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+        The radical tells you the <em>meaning family</em> (woman, mouth), the
+        shared part 马 tells you the <em>sound</em> (&ldquo;ma&rdquo;), and the{" "}
+        <strong>tone</strong> tells you the exact word. That&apos;s the whole
+        system — lines → strokes → radicals → characters.
+      </p>
+      <div className="mt-3 flex flex-wrap justify-center gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        <Link
+          href="/characters"
+          className="rounded-full bg-red-600 px-5 py-2 font-semibold text-white transition hover:bg-red-700"
         >
           ✍️ Practice writing →
         </Link>
         <Link
           href="/tones"
-          className="rounded-full border border-zinc-300 px-5 py-2.5 font-semibold transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          className="rounded-full border border-zinc-300 px-5 py-2 font-semibold transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
           🎵 Review the tone lines
         </Link>
       </div>
-    </div>
+    </section>
+  );
+
+  // Four numbered sections, ~1800px stacked and unreadable on anything
+  // smaller than a desktop. The numbers moved into the tab labels so the
+  // intended reading order survives the split.
+  return (
+    <Panes
+      title="🖌️ What the Lines Mean"
+      panes={[
+        { id: "strokes", label: "1 · Strokes", content: strokes },
+        { id: "order", label: "2 · Order", content: order },
+        { id: "radicals", label: "3 · Radicals", content: radicals },
+        { id: "family", label: "4 · 马 family", content: family },
+      ]}
+    />
   );
 }
