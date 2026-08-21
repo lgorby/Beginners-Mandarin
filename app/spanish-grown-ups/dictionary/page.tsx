@@ -55,30 +55,53 @@ export default function SpanishDictionaryPage() {
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bumped by every new query and by clearing the box. A response whose
+  // id no longer matches lost the race and must not touch the UI: the
+  // debounce timer only cancels requests that have not fired yet.
+  const requestId = useRef(0);
 
   // Clearing happens in the change handler, not here — setState inside
   // the effect body is the pattern React 19's lint rejects.
   const onQueryChange = (value: string) => {
     setQuery(value);
     if (!value.trim()) {
+      requestId.current++;
       setResults([]);
       setSearched(false);
+      setError(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     const q = query.trim();
     if (!q) return; // the change handler already cleared the results
+    const id = ++requestId.current;
+    const current = () => id === requestId.current;
     debounce.current = setTimeout(async () => {
       setLoading(true);
+      setError(false);
       try {
         const res = await fetch(`/api/search-es?q=${encodeURIComponent(q)}`);
+        // fetch only rejects on a network failure; a 500 arrives as a
+        // perfectly good response with no results in it.
+        if (!res.ok) throw new Error(`search-es returned ${res.status}`);
         const data = (await res.json()) as { results: Result[] };
+        if (!current()) return;
         setResults(data.results);
         setSearched(true);
+      } catch {
+        // Offline, or the dictionary failed to load server-side. Saying
+        // so beats the old behaviour, where the spinner cleared and the
+        // page went back to looking like nothing had been typed.
+        if (!current()) return;
+        setResults([]);
+        setSearched(false);
+        setError(true);
       } finally {
-        setLoading(false);
+        if (current()) setLoading(false);
       }
     }, 300);
     return () => {
@@ -106,7 +129,14 @@ export default function SpanishDictionaryPage() {
 
       {loading && <p className="mt-4 text-sm text-zinc-400">Searching…</p>}
 
-      {searched && !loading && results.length === 0 && (
+      {error && !loading && (
+        <p className="mt-6 text-center text-zinc-500">
+          Couldn&apos;t reach the dictionary. Check your connection and try
+          again.
+        </p>
+      )}
+
+      {searched && !loading && !error && results.length === 0 && (
         <p className="mt-6 text-center text-zinc-500">
           No matches for &ldquo;{query}&rdquo; — try a simpler word.
         </p>
