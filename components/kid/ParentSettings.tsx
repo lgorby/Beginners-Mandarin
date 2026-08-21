@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { LANGUAGES } from "@/lib/languages";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
-import { bestVoiceFor, subscribeVoices } from "@/lib/speech";
+import { effectiveVoiceFor, subscribeVoices } from "@/lib/speech";
 import { setPinyinVisible } from "@/lib/pinyinPref";
 import { setGentleTones } from "@/lib/tonePref";
 import { usePinyinVisible } from "./usePinyinVisible";
@@ -18,25 +18,30 @@ export default function ParentSettings() {
   const gentle = useGentleTones("kid");
   const lang = useKidLang();
   const language = LANGUAGES[lang];
-  // The tag of the voice speak() would actually use ("" = none at all).
+  // The tag of the voice speak() would actually use ("" = none at all),
+  // the grown-up's saved choice included — a warning computed from the
+  // automatic ranking alone said "es-MX" while the app spoke es-ES.
   // Voices load async in some browsers; the voiceschanged subscription
   // re-reads once they arrive. Server renders assume the right voice
   // exists so no warning flashes on a healthy machine.
-  const bestVoiceTag = useSyncExternalStore(
+  const voiceTag = useSyncExternalStore(
     subscribeVoices,
     () =>
-      bestVoiceFor(
+      effectiveVoiceFor(
         language.speechLang,
         language.preferredVoices,
         language.wrongVarietyVoices
-      )?.lang.toLowerCase().replace("_", "-") ?? "",
+      )
+        ?.lang.toLowerCase()
+        .replace("_", "-") ?? "",
     () => language.speechLang.toLowerCase()
   );
-  const voiceInstalled = bestVoiceTag !== "";
-  // The best the system has is still a variety this course doesn't teach
-  // (a Castilian voice reading the American Spanish course).
+  const voiceInstalled = voiceTag !== "";
+  // The voice in use is a variety this course doesn't teach (a Castilian
+  // voice reading the American Spanish course) — whether the system had
+  // nothing better or a grown-up picked it in the voice picker.
   const wrongVariety = Boolean(
-    language.wrongVarietyVoices?.some((t) => t.toLowerCase() === bestVoiceTag)
+    language.wrongVarietyVoices?.some((t) => t.toLowerCase() === voiceTag)
   );
 
   return (

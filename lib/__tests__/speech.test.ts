@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestCandidate, rankVoices, scoreMatch } from "@/lib/speech";
+import { bestCandidate, pickVoice, rankVoices, scoreMatch } from "@/lib/speech";
 
 describe("scoreMatch", () => {
   it("gives 100 for an exact match", () => {
@@ -100,5 +100,35 @@ describe("rankVoices", () => {
       "ES-us",
       "es_es",
     ]);
+  });
+});
+
+describe("pickVoice", () => {
+  // Ranked best-first, the way voicesFor() returns them: the Latin
+  // American voice this course wants, then the Castilian one it avoids.
+  const voices = [
+    { name: "Microsoft Dalia", lang: "es-MX" },
+    { name: "Microsoft Helena", lang: "es-ES" },
+  ];
+
+  it("uses the saved preference even when it is not the best-ranked voice", () => {
+    // This is the whole point: settings must be able to see the same
+    // wrong-variety choice that speak() will actually make.
+    expect(pickVoice(voices, "Microsoft Helena")?.name).toBe(
+      "Microsoft Helena"
+    );
+  });
+
+  it("falls back to the best-ranked voice when the saved one is uninstalled", () => {
+    expect(pickVoice(voices, "Microsoft Gone")?.name).toBe("Microsoft Dalia");
+  });
+
+  it("falls back to the best-ranked voice when nothing is saved", () => {
+    expect(pickVoice(voices, null)?.name).toBe("Microsoft Dalia");
+    expect(pickVoice(voices)?.name).toBe("Microsoft Dalia");
+  });
+
+  it("returns undefined when the system has no voices at all", () => {
+    expect(pickVoice([], "Microsoft Dalia")).toBeUndefined();
   });
 });

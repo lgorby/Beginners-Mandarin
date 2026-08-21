@@ -140,15 +140,39 @@ export function hasVoiceFor(lang: string): boolean {
 }
 
 /**
- * The voice speak() would actually use for a language, so settings can
- * warn when the best available is still the wrong variety.
+ * The voice a ranked list will actually be spoken with: the saved
+ * preference if it is still installed, otherwise the best-ranked one.
+ * Exists as one function so speak() and the settings warning can never
+ * disagree about which voice is in use — they did, and settings reported
+ * a Latin American voice while speak() used the Castilian one a parent
+ * had picked.
  */
-export function bestVoiceFor(
+export function pickVoice<T extends { name: string }>(
+  voices: T[],
+  preferredName?: string | null
+): T | undefined {
+  return (
+    (preferredName ? voices.find((v) => v.name === preferredName) : undefined) ??
+    voices[0]
+  );
+}
+
+/**
+ * The voice speak() would actually use for a language, saved preference
+ * included — what the learner will really hear, which is the only honest
+ * thing to build a wrong-variety warning on. This replaces bestVoiceFor(),
+ * which promised the same thing and delivered the ranking alone, so
+ * settings reported a Latin American voice while the app spoke Castilian.
+ */
+export function effectiveVoiceFor(
   lang: string,
   prefer: string[] = [],
   avoid: string[] = []
 ): SpeechSynthesisVoice | undefined {
-  return voicesFor(lang, prefer, avoid)[0];
+  return pickVoice(
+    voicesFor(lang, prefer, avoid),
+    getPreferredVoiceName(normTag(lang).split("-")[0])
+  );
 }
 
 /** Subscribe to the voice list changing, shaped for useSyncExternalStore. */
@@ -193,8 +217,7 @@ export function speak(
   const wanted =
     opts?.voiceName ?? getPreferredVoiceName(normTag(lang).split("-")[0]);
   const chosen =
-    (wanted ? voices.find((v) => v.name === wanted) : undefined) ??
-    voices[0] ??
+    pickVoice(voices, wanted) ??
     // No voice for this language at all. Never leave the choice to the
     // browser: its default can be ANY installed language, and a Chinese
     // default reading Spanish came out as convincing-sounding Mandarin

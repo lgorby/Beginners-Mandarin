@@ -24,6 +24,11 @@ const CONFIG = {
       "No Mandarin voices found on this system. Install one in Windows Settings → Time & Language → Language → add Chinese (Simplified) with Speech, then restart the browser.",
     noMale:
       " No male voice found — add Chinese (Simplified) speech in Windows Settings → Time & Language → Language to get Microsoft Kangkang (male), or open the app in Microsoft Edge which bundles many extra voices.",
+    // Mandarin has no wrong-variety list: the course teaches Putonghua
+    // and every zh voice is a reasonable reading of it.
+    avoid: [] as string[],
+    avoidBadge: "",
+    avoidNote: "",
   },
   es: {
     sample: "¡Hola! Vamos a aprender español.",
@@ -40,6 +45,10 @@ const CONFIG = {
       "No Spanish voices found on this system. Install one in Windows Settings → Time & Language → Language → add Spanish (Mexico) with Speech, then restart the browser.",
     noMale:
       " No male voice found — add Spanish (Mexico) speech in Windows Settings → Time & Language → Language to get Microsoft Raul (male), or open the app in Microsoft Edge which bundles many extra voices.",
+    avoid: LANGUAGES.es.wrongVarietyVoices ?? [],
+    avoidBadge: "Spain",
+    avoidNote:
+      " Voices marked Spain speak Castilian — “gracias” comes out “grathias” — which isn't the American Spanish this course teaches. Picking one changes the audio everywhere, the kids' lessons included.",
   },
 };
 
@@ -100,6 +109,12 @@ export default function VoicePicker({
                 {voices.map((v) => {
                   const gender = guessVoiceGender(v.name);
                   const isSel = (selected ?? voices[0]?.name) === v.name;
+                  // Ranked last by voicesFor(), but still selectable — a
+                  // grown-up may genuinely want it. Say what it is first.
+                  const wrongVariety = cfg.avoid.some(
+                    (t) =>
+                      t.toLowerCase() === v.lang.toLowerCase().replace("_", "-")
+                  );
                   return (
                     <li key={v.name}>
                       <button
@@ -119,6 +134,7 @@ export default function VoicePicker({
                           className={`ml-1 text-xs ${isSel ? cfg.selectedMetaClass : "text-zinc-400"}`}
                         >
                           {gender ?? ""} {v.lang}
+                          {wrongVariety && ` · ⚠ ${cfg.avoidBadge}`}
                         </span>
                       </button>
                     </li>
@@ -129,6 +145,12 @@ export default function VoicePicker({
                 Tap a voice to hear a sample. Your choice is used for all app
                 audio in this language.
                 {!hasMale && cfg.noMale}
+                {voices.some((v) =>
+                  cfg.avoid.some(
+                    (t) =>
+                      t.toLowerCase() === v.lang.toLowerCase().replace("_", "-")
+                  )
+                ) && cfg.avoidNote}
               </p>
             </>
           )}
