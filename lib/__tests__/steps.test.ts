@@ -99,6 +99,19 @@ describe("buildSteps", () => {
     ]);
   });
 
+  it("builds the full sentence from English, the prefixes by ear", () => {
+    for (const lesson of LESSONS) {
+      for (const step of stepsFor(lesson.id)) {
+        if (step.kind !== "BUILD") continue;
+        const isFull = step.answer.length === lesson.build.words.length;
+        const label = `${lesson.id}: ${step.answer.join(" ")}`;
+        expect(step.fromEnglish, label).toBe(isFull);
+        // A from-English build must actually have an English prompt.
+        if (step.fromEnglish) expect(step.en, label).not.toBe("");
+      }
+    }
+  });
+
   it("emits a single BUILD for a two-word sentence", () => {
     const builds = stepsFor("hello").filter((s) => s.kind === "BUILD");
     expect(builds.map((b) => (b.kind === "BUILD" ? b.answer : []))).toEqual([

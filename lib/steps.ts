@@ -17,8 +17,12 @@ export type Step =
   | { kind: "MATCH"; answer: string; choices: string[] }
   /** Say a word or the whole sentence into the microphone. */
   | { kind: "SAY"; words: string[]; en: string }
-  /** Tap picture-tiles into order to assemble `answer`. */
-  | { kind: "BUILD"; answer: string[]; en: string }
+  /**
+   * Tap picture-tiles into order to assemble `answer`. `fromEnglish`
+   * flips the direction: the prompt is the English meaning and the
+   * child produces the sentence, instead of echoing what they heard.
+   */
+  | { kind: "BUILD"; answer: string[]; en: string; fromEnglish: boolean }
   /** One slot of `sentence` is blank; pick the word that fills it. */
   | {
       kind: "SWAP";
@@ -187,13 +191,18 @@ export function buildSteps(lessonId: string): Step[] {
   });
 
   // 3. Ladder the build sentence: one BUILD per prefix of length 2..N.
+  // Prefixes are built by ear (a fragment has no meaningful English);
+  // the full sentence is built from its English meaning — the child
+  // produces it rather than echoing it, the way translation apps mix
+  // listening and translating exercises.
   const target = lesson.build.words;
   for (let n = 2; n <= target.length; n++) {
+    const isFull = n === target.length;
     steps.push({
       kind: "BUILD",
       answer: target.slice(0, n),
-      // Only the full sentence has a meaningful translation.
-      en: n === target.length ? lesson.build.en : "",
+      en: isFull ? lesson.build.en : "",
+      fromEnglish: isFull,
     });
   }
 
