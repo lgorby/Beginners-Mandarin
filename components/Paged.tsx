@@ -259,6 +259,14 @@ export default function Paged({
     goTo((ax > ay ? dx : dy) < 0 ? 1 : -1);
   };
 
+  // The browser claiming the drag for itself (as a pan or pull-to-
+  // refresh attempt) delivers touchcancel, not touchend — the swipe
+  // would just die. touch-none below keeps that from happening when
+  // pages exist; this keeps a cancelled gesture from going stale.
+  const onTouchCancel = () => {
+    touchStart.current = null;
+  };
+
   const buttonClass =
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-lg font-bold text-zinc-600 transition hover:bg-zinc-100 active:scale-95 disabled:opacity-30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800";
 
@@ -275,8 +283,16 @@ export default function Paged({
         onScroll={onScroll}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
         style={clip}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        // touch-none only while pages exist: real mobile browsers run
+        // drags through their own gesture recognizer first, and without
+        // touch-action:none a swipe is claimed as a pan attempt and
+        // arrives as touchcancel — CDP-dispatched touches never showed
+        // this. A single-page box keeps normal browser gestures.
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+          pageCount > 1 ? "touch-none" : ""
+        }`}
       >
         {children}
         {spacer > 0 && (

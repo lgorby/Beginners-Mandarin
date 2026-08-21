@@ -250,7 +250,15 @@ export function speak(
   }
 ) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  const synth = window.speechSynthesis;
+  // Cancelling while something is queued and speaking again in the same
+  // tick silently drops the new utterance on Android Chrome — the
+  // longstanding cancel/speak race. Remember whether we actually
+  // interrupted anything; utter() below delays only in that case, so
+  // the common first tap still speaks inside its user gesture (which
+  // iOS requires for the first utterance).
+  const wasBusy = synth.speaking || synth.pending;
+  synth.cancel();
   const lang = opts?.lang ?? "zh-CN";
   const isMandarin = /^zh/i.test(lang);
   const u = new SpeechSynthesisUtterance(text);
@@ -276,7 +284,27 @@ export function speak(
     u.onend = opts.onDone;
     u.onerror = opts.onDone;
   }
-  window.speechSynthesis.speak(u);
+  utter(synth, u, wasBusy);
+}
+
+/**
+ * Hand an utterance to the synthesizer in a way real phones accept:
+ * wait a beat after an actual cancel() (Android Chrome drops a same-tick
+ * speak), and resume() right after — some Android versions start the
+ * queue paused and stay silent forever without it. Desktop browsers are
+ * indifferent to both.
+ */
+function utter(
+  synth: SpeechSynthesis,
+  u: SpeechSynthesisUtterance,
+  delay: boolean
+) {
+  const go = () => {
+    synth.speak(u);
+    synth.resume();
+  };
+  if (delay) setTimeout(go, 60);
+  else go();
 }
 
 /**
@@ -318,6 +346,9 @@ export function ding() {
   try {
     dingCtx ??= new AudioContext();
     const ctx = dingCtx;
+    // Mobile browsers create the context suspended until a gesture;
+    // the mic tap that leads here counts, but only if we ask.
+    if (ctx.state === "suspended") void ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = 880;
@@ -476,13 +507,13 @@ export function recognizeAttempt(
  */
 export function speakEnglish(text: string, opts?: { rate?: number }) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  const synth = window.speechSynthesis;
+  const wasBusy = synth.speaking || synth.pending;
+  synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
   u.rate = opts?.rate ?? 0.95;
-  const english = window.speechSynthesis
-    .getVoices()
-    .find((v) => /^en([-_]|$)/i.test(v.lang));
+  const english = synth.getVoices().find((v) => /^en([-_]|$)/i.test(v.lang));
   if (english) u.voice = english;
-  window.speechSynthesis.speak(u);
+  utter(synth, u, wasBusy);
 }
