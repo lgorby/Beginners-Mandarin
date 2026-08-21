@@ -281,3 +281,48 @@ clean apart from a pre-existing warning in `fit-check.mjs` itself.
 
 Still open from the original list: the real-device mic race (step 1)
 and the kid-map pagination decision (step 3).
+
+---
+
+## Addendum 2 (2026-08-21, later still): everything paginates
+
+The kid-map question (step 3) was answered, and generalized: **the
+entire app paginates on phones**. Nothing scrolls anywhere, on any of
+the four viewports.
+
+**The mechanism** is `components/Paged.tsx`: a bounded, overflow-hidden
+box that measures its content into "atoms" (elements small enough to
+fit a page whole), places page boundaries on atom tops, clips the band
+below the last whole atom (no half-cut cards at a page's bottom edge),
+and pads the tail so the browser can actually scroll to the last page's
+start. Flipping pages is a scrollTop assignment — layout never reflows.
+When content fits, no controls render, so desktop and laptop (where all
+40 combinations already fit) look exactly as before.
+
+Applied to every scroll region: the Panes tabpanel (which covers
+tones, the lesson panes, strokes, sounds, spelling), both hubs, both
+lesson lists, the kid map, kid step content and the lesson-done
+screen, the front door, both dictionaries' results, both practice
+pages, both flashcard cards, characters, and mic-test. Deliberate
+exceptions that still scroll — transient popover/log UI, not page
+content: the VoicePicker dropdown, the ParentSettings modal, and
+RecognitionTest's log console.
+
+`scripts/fit-check.mjs` now understands pagination: an overflowing
+`[data-paged]` box must have `[data-pager]` controls or the run exits
+non-zero; healthy paged combos print as `pages`. Result: **80/80
+combinations fit with zero scrolling** (23 of them via ‹ › pages),
+window scrolls on 0, broken pagers 0.
+
+Verified beyond the harness: clicked through the Mandarin hub's three
+pages and the kid map's two on a 390×844 viewport (the click-through
+caught a real bug — the last page's start exceeded max scrollTop until
+the spacer was added), searched the dictionary on a phone viewport
+(30 results → "1 / 8", no scroll), and eyeballed screenshots of the
+hub pages, kid map, and a phone-landscape lesson step. `npm test` 161
+passed, `tsc --noEmit` clean, lint clean but for the pre-existing
+fit-check.mjs warning.
+
+Still open: the real-device mic race (step 1 above), unchanged. Worth
+a real-device glance too: page-flip feel on actual touch hardware —
+there is deliberately no swipe gesture, only the ‹ › buttons.
