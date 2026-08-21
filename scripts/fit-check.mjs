@@ -4,9 +4,13 @@
 // the user would have to scroll.
 //
 // "Fits" means the window does not scroll AND no inner region overflows.
-// Inner scrolling is the safe failure mode (nothing is clipped or
-// unreachable); a scrolling WINDOW means the one-viewport shell in
-// app/layout.tsx has been broken and should be treated as a regression.
+// Content that outgrows its box pages instead of scrolling
+// (components/Paged.tsx): a paged box counts as fitting — nothing moves
+// and everything is reachable through its ‹ › controls — and is shown
+// as "pages" for information. Two things are regressions and fail the
+// run: a scrolling WINDOW (the one-viewport shell in app/layout.tsx is
+// broken), and a paged box that overflows WITHOUT rendering its
+// controls (content would be unreachable).
 //
 // Usage (two terminals, or background the first):
 //
@@ -64,7 +68,7 @@ const PAGES = [
 ];
 
 const MEASURE = `(() => {
-  const out = { page: 0, scrollers: [], hScroll: 0 };
+  const out = { page: 0, scrollers: [], hScroll: 0, paged: [], broken: [] };
   const de = document.scrollingElement || document.documentElement;
   out.page = Math.max(0, de.scrollHeight - window.innerHeight);
   out.hScroll = Math.max(0, de.scrollWidth - window.innerWidth);
@@ -78,6 +82,14 @@ const MEASURE = `(() => {
     const over = el.scrollHeight - el.clientHeight;
     if (over <= 2) continue;
     if (el.clientHeight === 0) continue;
+    if (el.hasAttribute('data-paged')) {
+      // An overflowing Paged viewport must show its controls, or the
+      // rest of its content is unreachable.
+      const root = el.closest('[data-paged-root]');
+      const target = root && root.querySelector('[data-pager]') ? 'paged' : 'broken';
+      out[target].push({ el: desc(el), over });
+      continue;
+    }
     if (!/(auto|scroll)/.test(getComputedStyle(el).overflowY)) continue;
     out.scrollers.push({ el: desc(el), over });
   }
@@ -112,8 +124,10 @@ await rpc(ws, "Page.enable");
 await rpc(ws, "Runtime.enable");
 
 let clean = 0;
+let paged = 0;
 let total = 0;
 let windowScrolls = 0;
+let brokenPagers = 0;
 const problems = [];
 
 for (const vp of VIEWPORTS) {
@@ -143,22 +157,35 @@ for (const vp of VIEWPORTS) {
       windowScrolls++;
     }
     if (m.hScroll > 2) bits.push("H-SCROLL by " + m.hScroll + "px");
+    for (const b of m.broken) {
+      bits.push("PAGED BOX WITHOUT CONTROLS " + b.el + " +" + b.over + "px");
+      brokenPagers++;
+    }
     for (const s of m.scrollers) bits.push(s.el + " +" + s.over + "px");
+    const pageNote = m.paged.length
+      ? "  (pages: " + m.paged.map((s) => s.el + " +" + s.over + "px").join("; ") + ")"
+      : "";
     if (bits.length === 0) {
       clean++;
-      console.log("  fits   " + p.label.padEnd(16) + p.path);
+      if (m.paged.length) {
+        paged++;
+        console.log("  pages  " + p.label.padEnd(16) + p.path + pageNote);
+      } else {
+        console.log("  fits   " + p.label.padEnd(16) + p.path);
+      }
     } else {
-      console.log("  scroll " + p.label.padEnd(16) + p.path + "  ->  " + bits.join("; "));
+      console.log("  scroll " + p.label.padEnd(16) + p.path + "  ->  " + bits.join("; ") + pageNote);
       problems.push(vp.name.trim() + " | " + p.label + " | " + bits.join("; "));
     }
   }
 }
 
-console.log("\n" + clean + "/" + total + " page-viewport combinations fit with no scrolling at all.");
+console.log("\n" + clean + "/" + total + " page-viewport combinations fit with no scrolling at all (" + paged + " of them via ‹ › pages).");
 console.log(windowScrolls + " scroll the window (must be 0 — see app/layout.tsx).");
+console.log(brokenPagers + " paged boxes overflow without controls (must be 0 — see components/Paged.tsx).");
 if (problems.length) {
   console.log("\nScrolling remains here:");
   for (const p of problems) console.log("  - " + p);
 }
 ws.close();
-process.exitCode = windowScrolls === 0 ? 0 : 1;
+process.exitCode = windowScrolls === 0 && brokenPagers === 0 ? 0 : 1;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Paged from "@/components/Paged";
 import { STEP_COPY, type Step } from "@/lib/steps";
 import { speakEnglish } from "@/lib/speech";
 import { useArrowNav } from "@/lib/useArrowNav";
@@ -14,7 +15,7 @@ import { useArrowNav } from "@/lib/useArrowNav";
  *
  * The frame is exactly one viewport tall. Instruction pill and the
  * Continue row are fixed-height rails; the step's own content is the
- * only thing that flexes, and it scrolls inside its box rather than
+ * only thing that flexes, and it pages inside its box rather than
  * pushing Continue off a short screen. Sizes step down below sm: a
  * phone in landscape has ~390px of height to spend on all of this.
  */
@@ -65,9 +66,11 @@ export default function StepShell({
         <span aria-hidden>🔊</span>
       </button>
 
-      <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-center gap-2 overflow-y-auto sm:gap-4">
-        {children}
-      </div>
+      <Paged className="w-full min-h-0 flex-1">
+        <div className="my-auto flex w-full flex-col items-center gap-2 sm:gap-4">
+          {children}
+        </div>
+      </Paged>
 
       <div className="flex w-full max-w-sm shrink-0 items-center gap-2 sm:gap-3">
         <button

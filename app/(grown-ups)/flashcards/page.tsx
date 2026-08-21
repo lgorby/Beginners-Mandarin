@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import Paged from "@/components/Paged";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
 import { speak } from "@/lib/speech";
@@ -82,8 +83,12 @@ export default function FlashcardsPage() {
             tabIndex={0}
             onClick={() => !flipped && flip()}
             onKeyDown={(e) => e.key === "Enter" && !flipped && flip()}
-            className="block min-h-0 w-full flex-1 cursor-pointer overflow-y-auto rounded-3xl border border-zinc-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md sm:p-10 dark:border-zinc-800 dark:bg-zinc-900"
+            className="flex min-h-0 w-full flex-1 cursor-pointer flex-col rounded-3xl border border-zinc-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md sm:p-6 dark:border-zinc-800 dark:bg-zinc-900"
           >
+            {/* A flipped card on a phone in landscape is taller than its
+                box; it pages rather than scrolls, like everything else. */}
+            <Paged className="min-h-0 flex-1">
+            <div className="my-auto w-full">
             <div className="text-4xl sm:text-5xl">{current.emoji}</div>
             <div className="mt-2 text-xl font-semibold sm:text-2xl">
               {current.en}
@@ -110,6 +115,8 @@ export default function FlashcardsPage() {
                 Say it in Mandarin, then tap to reveal
               </p>
             )}
+            </div>
+            </Paged>
           </div>
 
           {flipped && (

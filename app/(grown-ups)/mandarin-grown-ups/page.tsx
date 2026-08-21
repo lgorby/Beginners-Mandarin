@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LESSONS } from "@/lib/lessons";
 import { VOCAB } from "@/lib/vocab";
+import Paged from "@/components/Paged";
 import WordCard from "@/components/WordCard";
 
 const FEATURES = [
@@ -55,7 +56,9 @@ export default function Home() {
   return (
     // A hub of seven cards plus a hero: the hero shrinks hard on short
     // screens so the cards — the reason to be here — stay above the fold.
-    <div className="flex h-full flex-col gap-2 overflow-y-auto">
+    // What still doesn't fit (a phone) pages rather than scrolls.
+    <Paged className="h-full">
+      <div className="flex flex-col gap-2">
       <section className="shrink-0 text-center">
         <div className="text-3xl sm:text-6xl">🐉</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight sm:mt-3 sm:text-4xl">
@@ -111,6 +114,7 @@ export default function Home() {
           full 120,000-entry dictionary.
         </p>
       </section>
-    </div>
+      </div>
+    </Paged>
   );
 }

@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import MicCheck from "@/components/MicCheck";
 import NoiseCheck from "@/components/NoiseCheck";
+import Paged from "@/components/Paged";
 import RecognitionTest from "@/components/RecognitionTest";
 
 export const metadata: Metadata = { title: "Microphone test" };
 
 export default function MicTestPage() {
   return (
-    <main className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-4 py-6">
+    <main className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col px-4 py-6">
+      <Paged className="min-h-0 flex-1">
+      <div>
       <h1 className="mb-2 text-2xl font-bold">
         🎤 Microphone &amp; speech test
       </h1>
@@ -26,6 +29,8 @@ export default function MicTestPage() {
       <div className="mt-6">
         <RecognitionTest />
       </div>
+      </div>
+      </Paged>
     </main>
   );
 }

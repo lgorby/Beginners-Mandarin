@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import HanziStroke from "@/components/HanziStroke";
+import Paged from "@/components/Paged";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
 import { VOCAB } from "@/lib/vocab";
@@ -54,7 +55,8 @@ export default function CharactersPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col gap-2 overflow-y-auto">
+    <Paged className="mx-auto h-full w-full max-w-3xl">
+      <div className="flex flex-col gap-2">
       <div className="shrink-0">
         <h1 className="text-xl font-bold sm:text-3xl">✍️ Character Writing</h1>
         <p className="short-hide mt-1 text-sm text-zinc-500">
@@ -125,6 +127,7 @@ export default function CharactersPage() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </Paged>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
+import Paged from "@/components/Paged";
 import { lessonsFor } from "@/lib/curriculum";
 import { LANGUAGES, LANG_CODES, type LangCode } from "@/lib/languages";
 import { setKidLang } from "@/lib/langPref";
@@ -119,8 +120,12 @@ export default function PathChooser() {
     // Four doors stacked need ~460px; a phone in landscape has ~390. The
     // two groups sit side by side from sm: up, which is exactly the case
     // where height is scarce and width is not, and stack again on a
-    // narrow phone in portrait, where height is plentiful.
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col justify-center gap-3 overflow-y-auto px-4 py-4 sm:max-w-3xl sm:gap-4">
+    // narrow phone in portrait, where height is plentiful. Whatever
+    // still overflows pages. my-auto (not justify-center, which clips
+    // its own top once content overflows) centers the doors when they fit.
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col px-4 py-4 sm:max-w-3xl">
+      <Paged className="min-h-0 flex-1">
+      <div className="my-auto flex flex-col gap-3 sm:gap-4">
       <div className="shrink-0 text-center">
         <div className="text-3xl sm:text-5xl" aria-hidden>
           🐉
@@ -176,6 +181,8 @@ export default function PathChooser() {
           ))}
         </div>
       </div>
+      </div>
+      </Paged>
     </main>
   );
 }

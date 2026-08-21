@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import Paged from "@/components/Paged";
 import SpeakButton from "@/components/SpeakButton";
 import { WORDS } from "@/lib/curriculum";
 import { LANGUAGES } from "@/lib/languages";
@@ -82,8 +83,11 @@ export default function SpanishFlashcardsPage() {
             tabIndex={0}
             onClick={() => !flipped && flip()}
             onKeyDown={(e) => e.key === "Enter" && !flipped && flip()}
-            className="block min-h-0 w-full flex-1 cursor-pointer overflow-y-auto rounded-3xl border border-zinc-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md sm:p-10 dark:border-zinc-800 dark:bg-zinc-900"
+            className="flex min-h-0 w-full flex-1 cursor-pointer flex-col rounded-3xl border border-zinc-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md sm:p-6 dark:border-zinc-800 dark:bg-zinc-900"
           >
+            {/* Same page-not-scroll overflow behavior as the Mandarin deck. */}
+            <Paged className="min-h-0 flex-1">
+            <div className="my-auto w-full">
             <div className="text-4xl sm:text-5xl">{current.emoji}</div>
             <div className="mt-2 text-xl font-semibold sm:text-2xl">
               {current.en}
@@ -112,6 +116,8 @@ export default function SpanishFlashcardsPage() {
                 Say it in Spanish, then tap to reveal
               </p>
             )}
+            </div>
+            </Paged>
           </div>
 
           {flipped && (

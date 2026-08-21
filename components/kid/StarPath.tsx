@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
+import Paged from "@/components/Paged";
 import PicTile from "./PicTile";
 import ParentSettings from "./ParentSettings";
 import { lessonsFor } from "@/lib/curriculum";
@@ -36,7 +37,8 @@ export default function StarPath() {
   return (
     // The map is a list of N lessons, so it is the one kid screen that
     // cannot promise to fit: Home row and the "keep going" card are
-    // fixed rails, and only the list scrolls. The page itself never does.
+    // fixed rails, and the list pages with ‹ › when it overflows. The
+    // page itself never scrolls.
     <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-3 px-4 py-3 sm:max-w-3xl lg:max-w-5xl">
       <div className="flex shrink-0 items-center gap-2">
         <Link
@@ -69,7 +71,8 @@ export default function StarPath() {
 
       {/* A grid, not a column: twenty lessons stacked is four screens
           even on a desktop, and the map is meant to be seen at a glance. */}
-      <ol className="grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <Paged className="min-h-0 flex-1">
+      <ol className="grid auto-rows-min grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {lessons.map((lesson) => {
           const unlocked = isUnlocked(progress, lesson.id);
           const stars = starsFor(progress, lesson.id);
@@ -112,6 +115,7 @@ export default function StarPath() {
           );
         })}
       </ol>
+      </Paged>
     </main>
   );
 }

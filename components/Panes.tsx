@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import Paged from "./Paged";
+
 /**
  * Turns a long stacked document into one-viewport panes.
  *
@@ -11,9 +13,9 @@ import { useState } from "react";
  * that tabbed frame, so every grown-up page pages the same way.
  *
  * The frame itself (title, tabs, optional footer) is fixed height; the
- * active pane is the single scroll region. A pane that still overflows
- * on a very short screen scrolls inside its own box — the tabs and the
- * page chrome never move.
+ * active pane is the single flexible region. A pane that still
+ * overflows on a very short screen pages inside its own box (see
+ * components/Paged.tsx) — the tabs and the page chrome never move.
  *
  * Arrow keys are deliberately NOT bound: several of these pages already
  * give ArrowRight to "next quiz word" via lib/useArrowNav.ts.
@@ -74,9 +76,10 @@ export default function Panes({
         })}
       </div>
 
-      <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto">
+      {/* Keyed so switching tabs starts the new pane on page 1. */}
+      <Paged key={current.id} role="tabpanel" className="min-h-0 flex-1">
         {current.content}
-      </div>
+      </Paged>
 
       {footer && <div className="shrink-0 pt-2">{footer}</div>}
     </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import GentleTonesToggle from "@/components/GentleTonesToggle";
 import MicCheck from "@/components/MicCheck";
+import Paged from "@/components/Paged";
 import MicPractice from "@/components/MicPractice";
 import PagerNav from "@/components/PagerNav";
 import { LESSONS } from "@/lib/lessons";
@@ -68,7 +69,7 @@ export default function PracticePage() {
         <GentleTonesToggle />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <Paged className="min-h-0 flex-1">
         <MicPractice
           key={`${mode}-${index}`}
           target={item.zh}
@@ -76,7 +77,7 @@ export default function PracticePage() {
           en={item.en}
           retryKey
         />
-      </div>
+      </Paged>
 
       <div className="shrink-0">
         <PagerNav

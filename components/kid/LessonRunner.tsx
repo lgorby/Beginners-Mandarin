@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Paged from "@/components/Paged";
 import BuildStep from "./steps/BuildStep";
 import MatchStep from "./steps/MatchStep";
 import MeetStep from "./steps/MeetStep";
@@ -54,7 +55,8 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
 
   if (stars !== null) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto px-4 text-center sm:gap-8">
+      <Paged className="min-h-0 flex-1 px-4">
+        <div className="my-auto flex flex-col items-center gap-4 text-center sm:gap-8">
         <p className="text-4xl sm:text-6xl">🎉</p>
         <h1 className="text-2xl font-bold sm:text-3xl">{lesson.title}</h1>
         <p
@@ -80,7 +82,8 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
             Back to the map
           </Link>
         </div>
-      </div>
+        </div>
+      </Paged>
     );
   }
 

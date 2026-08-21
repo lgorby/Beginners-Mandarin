@@ -5,6 +5,7 @@ import { getWord, lessonsFor, type Word } from "@/lib/curriculum";
 import { LANGUAGES } from "@/lib/languages";
 import { setKidLang } from "@/lib/langPref";
 import { SPANISH_SECTIONS } from "@/lib/spanishSections";
+import Paged from "@/components/Paged";
 import SpeakButton from "@/components/SpeakButton";
 
 /**
@@ -92,8 +93,10 @@ export default function SpanishGrownUps() {
   const wordCount = lessons.reduce((n, l) => n + l.newWords.length, 0);
 
   return (
-    // The Mandarin hub's twin — same shrink-on-short-screens hero.
-    <div className="flex h-full flex-col gap-2 overflow-y-auto">
+    // The Mandarin hub's twin — same shrink-on-short-screens hero, same
+    // page-instead-of-scroll overflow behavior.
+    <Paged className="h-full">
+      <div className="flex flex-col gap-2">
       <section className="shrink-0 text-center">
         <div className="text-3xl sm:text-6xl">🦜</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight sm:mt-3 sm:text-4xl">
@@ -151,6 +154,7 @@ export default function SpanishGrownUps() {
           grown-up tools on the way.
         </p>
       </section>
-    </div>
+      </div>
+    </Paged>
   );
 }

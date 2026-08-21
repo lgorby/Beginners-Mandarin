@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { LESSONS } from "@/lib/lessons";
+import Paged from "@/components/Paged";
 
 export default function LessonsPage() {
   return (
     // Ten lessons is a list, not a screenful: the heading stays put and
-    // only the list scrolls, so the page itself never does.
+    // only the list pages, so the page itself never moves.
     <div className="mx-auto flex h-full max-w-3xl flex-col gap-2">
       <div className="shrink-0">
         <h1 className="text-xl font-bold sm:text-3xl">📚 Lessons</h1>
@@ -20,7 +21,8 @@ export default function LessonsPage() {
           first — everything builds on it.
         </p>
       </div>
-      <ol className="grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+      <Paged className="min-h-0 flex-1">
+      <ol className="grid auto-rows-min gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {LESSONS.map((l) => (
           <li key={l.id}>
             <Link
@@ -40,6 +42,7 @@ export default function LessonsPage() {
           </li>
         ))}
       </ol>
+      </Paged>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Paged from "@/components/Paged";
 import { LANGUAGES } from "@/lib/languages";
 import SpeakButton from "@/components/SpeakButton";
 import { articleFor, posLabel, spokenForm } from "@/lib/spanishNouns";
@@ -94,7 +95,9 @@ export default function SpanishDictionaryPage() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* Search results page with ‹ › instead of scrolling. */}
+      <Paged className="min-h-0 flex-1">
+      <div>
         {loading && <p className="text-sm text-zinc-400">Searching…</p>}
 
         {error && !loading && (
@@ -147,6 +150,7 @@ export default function SpanishDictionaryPage() {
           ))}
         </ul>
       </div>
+      </Paged>
 
       <div className="short-hide shrink-0 rounded-xl bg-zinc-100 p-3 text-xs text-zinc-500 dark:bg-zinc-900">
         Nouns show their article — <strong>el</strong> (masculine) or{" "}

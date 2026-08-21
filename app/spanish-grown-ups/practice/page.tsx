@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import MicCheck from "@/components/MicCheck";
+import Paged from "@/components/Paged";
 import MicPractice from "@/components/MicPractice";
 import PagerNav from "@/components/PagerNav";
 import { WORDS, lessonsFor, sentenceText } from "@/lib/curriculum";
@@ -67,7 +68,7 @@ export default function SpanishPracticePage() {
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <Paged className="min-h-0 flex-1">
         <MicPractice
           key={`${mode}-${index}`}
           target={item.text}
@@ -75,7 +76,7 @@ export default function SpanishPracticePage() {
           lang="es"
           retryKey
         />
-      </div>
+      </Paged>
 
       <div className="shrink-0">
         <PagerNav

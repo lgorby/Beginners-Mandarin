@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Paged from "@/components/Paged";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
 
@@ -71,7 +72,9 @@ export default function DictionaryPage() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* Search results page with ‹ › instead of scrolling. */}
+      <Paged className="min-h-0 flex-1">
+      <div>
         {loading && <p className="text-sm text-zinc-400">Searching…</p>}
 
         {searched && !loading && results.length === 0 && (
@@ -110,6 +113,7 @@ export default function DictionaryPage() {
           ))}
         </ul>
       </div>
+      </Paged>
 
       <div className="short-hide shrink-0 rounded-xl bg-zinc-100 p-3 text-xs text-zinc-500 dark:bg-zinc-900">
         Tone colors: <span style={{ color: "#e02424" }}>1st (flat)</span> ·{" "}
