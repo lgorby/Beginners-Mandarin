@@ -5,13 +5,23 @@
 // joins words or picks a language itself.
 
 import { getWord, languageOf, sentenceText } from "./curriculum";
+import type { Language } from "./languages";
 import { speak } from "./speech";
+
+/** How speak() should voice one of this language's utterances. */
+function voiceOpts(language: Language) {
+  return {
+    lang: language.speechLang,
+    voicePrefer: language.preferredVoices,
+    voiceAvoid: language.wrongVarietyVoices,
+  };
+}
 
 export function speakWord(
   text: string,
   opts?: { onDone?: () => void }
 ): void {
-  speak(text, { ...opts, lang: languageOf([text]).speechLang });
+  speak(text, { ...opts, ...voiceOpts(languageOf([text])) });
 }
 
 /**
@@ -24,7 +34,7 @@ export function speakSentence(
   opts?: { question?: boolean; onDone?: () => void }
 ): void {
   speak(sentenceText(words, { question: opts?.question }), {
-    lang: languageOf(words).speechLang,
+    ...voiceOpts(languageOf(words)),
     onDone: opts?.onDone,
   });
 }

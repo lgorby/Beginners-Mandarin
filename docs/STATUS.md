@@ -135,12 +135,17 @@ they failed. What stands now:
 **Speak the Spanish path on a real machine.** Real use already caught
 the worst of it: with no Spanish voice installed, the browser's default
 voice read the Spanish — on this project's machine a Chinese voice, so
-the path sounded like Mandarin mixed into Spanish. Two guards now stand
+the path sounded like Mandarin mixed into Spanish. Three guards now stand
 (2026-08-20): speak() falls back to an English voice rather than the
-browser default when a language has no voice, and the kid ⚙️ settings
+browser default when a language has no voice; the kid ⚙️ settings
 show a "No Spanish voice installed" notice naming the Windows voice pack
 (Settings → Time &amp; Language → Speech → Add voices → Spanish
-(Mexico)). Still unheard: the actual es-MX voice, `es-MX` recognition
+(Mexico)); and voice picking ranks Latin American varieties above
+Castilian (rankVoices in lib/speech.ts, configured by
+preferredVoices/wrongVarietyVoices on the language registry) with a
+second ⚙️ notice when a Spain voice is all the system has — real use
+found Chrome choosing "Google español" (es-ES) over the es-US voice
+sitting right next to it. Still unheard: the actual es-MX voice, `es-MX` recognition
 scoring "yo bebo té", and whether the ¿…? wrap raises the TTS
 intonation — install the voice pack, then run `/learn/hola` end-to-end
 in Edge, the same hand-verification the Mandarin flow got.
