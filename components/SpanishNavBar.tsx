@@ -7,9 +7,10 @@ import { SPANISH_SECTIONS } from "@/lib/spanishSections";
 
 /**
  * NavBar's Spanish twin: same sticky bar and pill buttons, emerald
- * accent. Lessons is the one link that leaves the section — the kid path
- * already teaches Spanish, so it pins the language first; the rest are
- * the five grown-up tools, sourced from SPANISH_SECTIONS.
+ * accent. Lessons hands off to the kid path, which teaches both
+ * languages, so it is the only link here that pins the language before
+ * navigating. The rest are Home and the five grown-up tools, sourced
+ * from SPANISH_SECTIONS.
  */
 
 const LINKS = [
