@@ -2,12 +2,26 @@
 
 import { useState } from "react";
 import HanziStroke from "@/components/HanziStroke";
+import Paged from "@/components/Paged";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
 import { VOCAB } from "@/lib/vocab";
 
 // Single-character beginner words are ideal for first stroke practice.
-const STARTERS = ["一", "二", "三", "十", "人", "大", "小", "口", "日", "月", "水", "火"];
+const STARTERS = [
+  "一",
+  "二",
+  "三",
+  "十",
+  "人",
+  "大",
+  "小",
+  "口",
+  "日",
+  "月",
+  "水",
+  "火",
+];
 
 const STARTER_INFO: Record<string, { pinyin: string; en: string }> = {
   一: { pinyin: "yi1", en: "one" },
@@ -41,17 +55,18 @@ export default function CharactersPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">✍️ Character Writing</h1>
-        <p className="mt-1 text-zinc-500">
+    <Paged className="mx-auto h-full w-full max-w-3xl">
+      <div className="flex flex-col gap-2">
+      <div className="shrink-0">
+        <h1 className="text-xl font-bold sm:text-3xl">✍️ Character Writing</h1>
+        <p className="short-hide mt-1 text-sm text-zinc-500">
           Every character is written with a fixed stroke order. Watch the
           animation, then trace it yourself with your mouse or finger. These
           twelve pictograph-like characters are the classic starting set.
         </p>
       </div>
 
-      <div className="grid grid-cols-6 gap-2 sm:grid-cols-12">
+      <div className="grid shrink-0 grid-cols-6 gap-2 sm:grid-cols-12">
         {STARTERS.map((c) => (
           <button
             key={c}
@@ -69,10 +84,10 @@ export default function CharactersPage() {
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:justify-center sm:gap-10">
-        <HanziStroke char={selected} size={200} />
+      <div className="flex shrink-0 flex-col items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 sm:flex-row sm:justify-center sm:gap-10 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <HanziStroke char={selected} size={140} />
         <div className="text-center sm:text-left">
-          <div className="text-5xl" lang="zh-CN">
+          <div className="text-4xl sm:text-5xl" lang="zh-CN">
             {selected}
           </div>
           {info && (
@@ -92,7 +107,7 @@ export default function CharactersPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="shrink-0 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="font-semibold">Try any character</h2>
         <div className="mt-2 flex gap-2">
           <input
@@ -112,6 +127,7 @@ export default function CharactersPage() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </Paged>
   );
 }

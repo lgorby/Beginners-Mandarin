@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import MicCheck from "@/components/MicCheck";
+import Paged from "@/components/Paged";
 import MicPractice from "@/components/MicPractice";
 import PagerNav from "@/components/PagerNav";
 import { WORDS, lessonsFor, sentenceText } from "@/lib/curriculum";
@@ -34,20 +35,23 @@ export default function SpanishPracticePage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">🎤 Speaking Practice</h1>
-        <p className="mt-1 text-zinc-500">
-          Listen, then say it into your microphone. Scored practice
-          (&ldquo;Say it!&rdquo;) uses the browser&apos;s Spanish speech
-          recognizer — <strong>Google Chrome works best</strong> and it needs
-          internet. Record &amp; Compare works in any browser, offline.
+    // Same shape as the Mandarin practice page.
+    <div className="mx-auto flex h-full max-w-2xl flex-col gap-2">
+      <div className="shrink-0">
+        <h1 className="text-xl font-bold sm:text-3xl">🎤 Speaking Practice</h1>
+        <p className="compact-hide mt-1 text-sm text-zinc-500">
+          Listen, then say it into your microphone. Scored practice (&ldquo;Say
+          it!&rdquo;) uses the browser&apos;s Spanish speech recognizer —{" "}
+          <strong>Google Chrome works best</strong> and it needs internet.
+          Record &amp; Compare works in any browser, offline.
         </p>
       </div>
 
-      <MicCheck />
+      <div className="shrink-0">
+        <MicCheck />
+      </div>
 
-      <div className="flex gap-2">
+      <div className="flex shrink-0 gap-2">
         {(["words", "sentences"] as const).map((m) => (
           <button
             key={m}
@@ -64,23 +68,28 @@ export default function SpanishPracticePage() {
         ))}
       </div>
 
-      <MicPractice
-        key={`${mode}-${index}`}
-        target={item.text}
-        en={item.en}
-        lang="es"
-        retryKey
-      />
+      <Paged className="min-h-0 flex-1">
+        <MicPractice
+          key={`${mode}-${index}`}
+          target={item.text}
+          en={item.en}
+          lang="es"
+          retryKey
+        />
+      </Paged>
 
-      <PagerNav
-        prev={{
-          onClick: () => setIndex((i) => (i - 1 + items.length) % items.length),
-        }}
-        next={{ onClick: () => setIndex((i) => (i + 1) % items.length) }}
-        center={`${(index % items.length) + 1} / ${items.length}`}
-      />
+      <div className="shrink-0">
+        <PagerNav
+          prev={{
+            onClick: () =>
+              setIndex((i) => (i - 1 + items.length) % items.length),
+          }}
+          next={{ onClick: () => setIndex((i) => (i + 1) % items.length) }}
+          center={`${(index % items.length) + 1} / ${items.length}`}
+        />
+      </div>
 
-      <p className="text-xs text-zinc-400">
+      <p className="compact-hide shrink-0 text-xs text-zinc-400">
         Tip: if your score is low, play 🐢 slow mode and copy it — keep the
         vowels short and pure, and don&apos;t rush the rolled r.
       </p>

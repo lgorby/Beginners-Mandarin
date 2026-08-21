@@ -5,6 +5,7 @@ import { getWord, lessonsFor, type Word } from "@/lib/curriculum";
 import { LANGUAGES } from "@/lib/languages";
 import { setKidLang } from "@/lib/langPref";
 import { SPANISH_SECTIONS } from "@/lib/spanishSections";
+import Paged from "@/components/Paged";
 import SpeakButton from "@/components/SpeakButton";
 
 /**
@@ -68,9 +69,9 @@ const FEATURES: Feature[] = [
 
 function EsWordCard({ word }: { word: Word }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="text-4xl">{word.emoji}</div>
-      <div className="text-2xl font-semibold" lang={es.speechLang}>
+    <div className="flex flex-col items-center gap-1 rounded-2xl border border-zinc-200 bg-white p-2 text-center shadow-sm transition hover:shadow-md sm:p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="text-3xl sm:text-4xl">{word.emoji}</div>
+      <div className="text-xl font-semibold sm:text-2xl" lang={es.speechLang}>
         {word.text}
       </div>
       <div className="text-sm text-zinc-500">{word.en}</div>
@@ -92,65 +93,68 @@ export default function SpanishGrownUps() {
   const wordCount = lessons.reduce((n, l) => n + l.newWords.length, 0);
 
   return (
-    <div className="space-y-12">
-      <section className="text-center">
-        <div className="text-6xl">🦜</div>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight">
+    // The Mandarin hub's twin — same shrink-on-short-screens hero, same
+    // page-instead-of-scroll overflow behavior.
+    <Paged className="h-full">
+      <div className="flex flex-col gap-2">
+      <section className="shrink-0 text-center">
+        <div className="text-3xl sm:text-6xl">🦜</div>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:mt-3 sm:text-4xl">
           Learn Spanish <span className="text-emerald-600">from zero</span>
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-zinc-600 dark:text-zinc-300">
-          Hear every word spoken aloud, practice with your microphone, and
-          build real Latin American Spanish sentences — all in your browser,
-          free.
+        <p className="short-hide mx-auto mt-2 max-w-xl text-sm text-zinc-600 dark:text-zinc-300">
+          Hear every word spoken aloud, practice with your microphone, and build
+          real Latin American Spanish sentences — all in your browser, free.
         </p>
-        <div className="mt-6 flex justify-center gap-3">
+        <div className="mt-3 flex justify-center gap-3 sm:mt-6">
           <Link
             href="/learn"
             onClick={() => setKidLang("es")}
-            className="rounded-full bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700"
+            className="rounded-full bg-emerald-600 px-5 py-2 font-semibold text-white transition hover:bg-emerald-700 sm:px-6 sm:py-3"
           >
             Start the Lessons →
           </Link>
           <Link
             href="/spanish-grown-ups/dictionary"
-            className="rounded-full border border-zinc-300 px-6 py-3 font-semibold transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-full border border-zinc-300 px-5 py-2 font-semibold transition hover:bg-zinc-100 sm:px-6 sm:py-3 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
             Try the Dictionary
           </Link>
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid shrink-0 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
         {FEATURES.map((f) => (
           <Link
             key={f.href}
             href={f.href}
             onClick={f.pinLang ? () => setKidLang("es") : undefined}
-            className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
           >
-            <div className="text-3xl">{f.icon}</div>
-            <h2 className="mt-2 font-semibold">{f.title}</h2>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <div className="text-2xl">{f.icon}</div>
+            <h2 className="mt-1 text-sm font-semibold">{f.title}</h2>
+            <p className="short-hide mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               {f.desc}
             </p>
           </Link>
         ))}
       </section>
 
-      <section>
-        <h2 className="mb-4 text-center text-xl font-bold">
+      <section className="compact-hide shrink-0">
+        <h2 className="mb-2 text-center font-bold sm:text-xl">
           Tap 🔊 to hear your first words
         </h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-4 gap-2 sm:gap-4">
           {preview.map((w) => (
             <EsWordCard key={w.text} word={w} />
           ))}
         </div>
-        <p className="mt-4 text-center text-sm text-zinc-500">
-          {wordCount} beginner words across {lessons.length} lessons — with
-          more grown-up tools on the way.
+        <p className="mt-2 text-center text-sm text-zinc-500">
+          {wordCount} beginner words across {lessons.length} lessons — with more
+          grown-up tools on the way.
         </p>
       </section>
-    </div>
+      </div>
+    </Paged>
   );
 }

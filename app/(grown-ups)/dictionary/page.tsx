@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Paged from "@/components/Paged";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
 
@@ -49,59 +50,72 @@ export default function DictionaryPage() {
   }, [query]);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="text-3xl font-bold">🔎 Talking Dictionary</h1>
-      <p className="mt-1 text-zinc-500">
-        Type an <strong>English word</strong> (like &ldquo;water&rdquo;),{" "}
-        <strong>pinyin</strong> (like &ldquo;shui&rdquo;), or paste{" "}
-        <strong>Chinese characters</strong> — then tap 🔊 to hear it.
-      </p>
-
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        placeholder="Try: hello, water, cat, xie xie, 你好…"
-        autoFocus
-        className="mt-5 w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-lg shadow-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-zinc-700 dark:bg-zinc-900"
-      />
-
-      {loading && <p className="mt-4 text-sm text-zinc-400">Searching…</p>}
-
-      {searched && !loading && results.length === 0 && (
-        <p className="mt-6 text-center text-zinc-500">
-          No matches for &ldquo;{query}&rdquo; — try a simpler word.
+    // A results list has no bound, so it is the scroll region and the
+    // search box above it never moves — the alternative is typing a
+    // second query and having to scroll back up to see the box.
+    <div className="mx-auto flex h-full max-w-3xl flex-col gap-3">
+      <div className="shrink-0">
+        <h1 className="text-xl font-bold sm:text-3xl">🔎 Talking Dictionary</h1>
+        <p className="short-hide mt-1 text-sm text-zinc-500">
+          Type an <strong>English word</strong> (like &ldquo;water&rdquo;),{" "}
+          <strong>pinyin</strong> (like &ldquo;shui&rdquo;), or paste{" "}
+          <strong>Chinese characters</strong> — then tap 🔊 to hear it.
         </p>
-      )}
 
-      <ul className="mt-6 space-y-3">
-        {results.map((r, i) => (
-          <li
-            key={`${r.simplified}-${r.pinyin}-${i}`}
-            className="flex items-start gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <SpeakButton text={r.simplified} showSlow />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-baseline gap-x-3">
-                <span className="text-3xl font-semibold" lang="zh-CN">
-                  {r.simplified}
-                </span>
-                {r.traditional !== r.simplified && (
-                  <span className="text-lg text-zinc-400" lang="zh-TW">
-                    ({r.traditional})
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder="Try: hello, water, cat, xie xie, 你好…"
+          autoFocus
+          className="mt-3 w-full rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 shadow-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-200 sm:px-5 sm:py-4 sm:text-lg dark:border-zinc-700 dark:bg-zinc-900"
+        />
+      </div>
+
+      {/* Search results page with ‹ › instead of scrolling. */}
+      <Paged className="min-h-0 flex-1">
+      <div>
+        {loading && <p className="text-sm text-zinc-400">Searching…</p>}
+
+        {searched && !loading && results.length === 0 && (
+          <p className="mt-4 text-center text-zinc-500">
+            No matches for &ldquo;{query}&rdquo; — try a simpler word.
+          </p>
+        )}
+
+        <ul className="space-y-2">
+          {results.map((r, i) => (
+            <li
+              key={`${r.simplified}-${r.pinyin}-${i}`}
+              className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm sm:gap-4 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <SpeakButton text={r.simplified} showSlow />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-3">
+                  <span className="text-3xl font-semibold" lang="zh-CN">
+                    {r.simplified}
                   </span>
-                )}
-                <PinyinText pinyin={r.pinyin} className="text-lg font-medium" />
+                  {r.traditional !== r.simplified && (
+                    <span className="text-lg text-zinc-400" lang="zh-TW">
+                      ({r.traditional})
+                    </span>
+                  )}
+                  <PinyinText
+                    pinyin={r.pinyin}
+                    className="text-lg font-medium"
+                  />
+                </div>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                  {r.definitions.slice(0, 4).join(" · ")}
+                </p>
               </div>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                {r.definitions.slice(0, 4).join(" · ")}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+      </Paged>
 
-      <div className="mt-8 rounded-xl bg-zinc-100 p-4 text-xs text-zinc-500 dark:bg-zinc-900">
+      <div className="short-hide shrink-0 rounded-xl bg-zinc-100 p-3 text-xs text-zinc-500 dark:bg-zinc-900">
         Tone colors: <span style={{ color: "#e02424" }}>1st (flat)</span> ·{" "}
         <span style={{ color: "#0e9f6e" }}>2nd (rising)</span> ·{" "}
         <span style={{ color: "#1c64f2" }}>3rd (dip)</span> ·{" "}

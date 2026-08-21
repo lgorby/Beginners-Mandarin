@@ -36,11 +36,11 @@ export default function ParentSettings() {
       const v = effectiveVoiceFor(
         language.speechLang,
         language.preferredVoices,
-        language.wrongVarietyVoices
+        language.wrongVarietyVoices,
       );
       return v ? normTag(v.lang) : "";
     },
-    () => language.speechLang.toLowerCase()
+    () => language.speechLang.toLowerCase(),
   );
   const voiceInstalled = voiceTag !== "";
   // The best-ranked voice for this language, blind to any saved
@@ -53,9 +53,9 @@ export default function ParentSettings() {
       rankedVoiceTag(
         language.speechLang,
         language.preferredVoices,
-        language.wrongVarietyVoices
+        language.wrongVarietyVoices,
       ),
-    () => language.speechLang.toLowerCase()
+    () => language.speechLang.toLowerCase(),
   );
   // Which wrong-variety warning (if any) to show. Installing a voice
   // pack can't fix a case where a grown-up's saved choice overrode a
@@ -64,23 +64,28 @@ export default function ParentSettings() {
   const voiceWarning = voiceWarningKind(
     voiceTag,
     rankedTag,
-    language.wrongVarietyVoices ?? []
+    language.wrongVarietyVoices ?? [],
   );
 
   return (
     <>
+      {/* Inline, not `fixed bottom-4 right-4`: floating there it sat on
+          top of whatever the primary action was on a short screen.
+          StarPath puts it in its header row instead. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Settings for grown-ups"
-        className="fixed bottom-4 right-4 rounded-full bg-white/90 p-3 text-xl shadow-lg dark:bg-zinc-800/90"
+        className="shrink-0 rounded-full bg-white/90 p-2 text-lg shadow-sm dark:bg-zinc-800/90"
       >
         ⚙️
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 dark:bg-zinc-900">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-2 sm:p-4">
+          {/* The sheet is the one thing here allowed its own scroll: on a
+              phone in landscape the voice warnings alone outrun 390px. */}
+          <div className="max-h-full w-full max-w-md overflow-y-auto rounded-3xl bg-white p-4 sm:p-6 dark:bg-zinc-900">
             <h2 className="text-xl font-bold">For grown-ups</h2>
 
             <div className="mt-4">
@@ -97,38 +102,36 @@ export default function ParentSettings() {
 
             {language.voicePack && !voiceInstalled && (
               <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                🔇 No {language.name} voice is installed, so a stand-in
-                voice reads the words — they will sound wrong until one is
-                added. In Windows: Settings → Time &amp; Language → Speech
-                → Add voices → <strong>{language.voicePack}</strong>, then
-                restart the browser.
+                🔇 No {language.name} voice is installed, so a stand-in voice
+                reads the words — they will sound wrong until one is added. In
+                Windows: Settings → Time &amp; Language → Speech → Add voices →{" "}
+                <strong>{language.voicePack}</strong>, then restart the browser.
               </p>
             )}
 
             {language.voicePack && voiceWarning === "install" && (
               <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                🗣️ Only a European {language.name} voice is installed, so
-                words sound Castilian (&ldquo;gracias&rdquo; like
-                &ldquo;grathias&rdquo;) — this course teaches Latin
-                American {language.name}. In Windows: Settings → Time
-                &amp; Language → Speech → Add voices →{" "}
-                <strong>{language.voicePack}</strong>, then restart the
-                browser.
+                🗣️ Only a European {language.name} voice is installed, so words
+                sound Castilian (&ldquo;gracias&rdquo; like
+                &ldquo;grathias&rdquo;) — this course teaches Latin American{" "}
+                {language.name}. In Windows: Settings → Time &amp; Language →
+                Speech → Add voices → <strong>{language.voicePack}</strong>,
+                then restart the browser.
               </p>
             )}
 
             {language.voicePack && voiceWarning === "picker" && (
               <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                🗣️ The {language.name} voice chosen in the Voice picker is
-                a European one, so words sound Castilian
-                (&ldquo;gracias&rdquo; like &ldquo;grathias&rdquo;) — this
-                course teaches Latin American {language.name}. The Voice
-                picker sits bottom-right on the grown-up pages (
+                🗣️ The {language.name} voice chosen in the Voice picker is a
+                European one, so words sound Castilian (&ldquo;gracias&rdquo;
+                like &ldquo;grathias&rdquo;) — this course teaches Latin
+                American {language.name}. The Voice picker sits bottom-right on
+                the grown-up pages (
                 <Link href={language.grownUpsPath} className="underline">
                   open them below
                 </Link>
-                ) — choose a different voice there to fix it everywhere,
-                the kids&apos; lessons included.
+                ) — choose a different voice there to fix it everywhere, the
+                kids&apos; lessons included.
               </p>
             )}
 
@@ -154,9 +157,9 @@ export default function ParentSettings() {
                   <span>
                     Gentle tones
                     <span className="block text-sm text-zinc-500">
-                      On by default — young children earn the win with the
-                      right sounds, and tones are coached playfully. Turn off
-                      to require correct tones for a &quot;Perfect&quot;.
+                      On by default — young children earn the win with the right
+                      sounds, and tones are coached playfully. Turn off to
+                      require correct tones for a &quot;Perfect&quot;.
                     </span>
                   </span>
                   <input
@@ -179,7 +182,9 @@ export default function ParentSettings() {
             <button
               type="button"
               onClick={() => {
-                if (!confirm("Erase all stars (every language) and start over?"))
+                if (
+                  !confirm("Erase all stars (every language) and start over?")
+                )
                   return;
                 localStorage.removeItem(PROGRESS_KEY);
                 reloadProgress(); // drop the cached snapshot; the map re-renders

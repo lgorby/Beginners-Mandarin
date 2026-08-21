@@ -36,13 +36,13 @@ export default function MatchStep({
       <button
         type="button"
         onClick={() => speakWord(step.answer)}
-        className="rounded-full bg-red-50 px-8 py-6 text-5xl dark:bg-red-950"
+        className="shrink-0 rounded-full bg-red-50 px-5 py-3 text-3xl sm:px-8 sm:py-5 sm:text-5xl dark:bg-red-950"
         aria-label="Play the word again"
       >
         🔊
       </button>
 
-      <div className="flex flex-wrap justify-center gap-3">
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
         {step.choices.map((word) => {
           const wrong = picked === word && word !== step.answer;
           return (
@@ -66,7 +66,7 @@ export default function MatchStep({
       </div>
 
       {picked && !solved && (
-        <p className="text-lg font-semibold text-amber-600">Try again 🙂</p>
+        <p className="font-semibold text-amber-600 sm:text-lg">Try again 🙂</p>
       )}
     </StepShell>
   );

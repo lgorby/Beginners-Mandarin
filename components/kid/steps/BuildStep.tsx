@@ -62,15 +62,15 @@ export default function BuildStep({
       <button
         type="button"
         onClick={() => speakSentence(step.answer, { question })}
-        className="rounded-full bg-red-50 px-6 py-4 text-3xl dark:bg-red-950"
+        className="shrink-0 rounded-full bg-red-50 px-4 py-2 text-2xl sm:px-6 sm:py-3 sm:text-3xl dark:bg-red-950"
         aria-label="Hear the sentence again"
       >
         🔊
       </button>
 
-      <div className="flex min-h-32 flex-wrap items-center justify-center gap-2 rounded-3xl border-4 border-dashed border-zinc-300 p-3 dark:border-zinc-700">
+      <div className="flex min-h-[clamp(3.5rem,13dvh,8rem)] flex-wrap items-center justify-center gap-1.5 rounded-3xl border-4 border-dashed border-zinc-300 p-2 sm:gap-2 sm:p-3 dark:border-zinc-700">
         {placed.length === 0 ? (
-          <span className="text-lg text-zinc-400">
+          <span className="text-sm text-zinc-400 sm:text-lg">
             Tap the pictures in order
           </span>
         ) : (
@@ -80,13 +80,15 @@ export default function BuildStep({
         )}
       </div>
 
-      <div className="flex flex-wrap justify-center gap-3">
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
         {tray.map((word, i) => (
           <PicTile
             key={`${word}-${i}`}
             wordKey={word}
             size="md"
-            disabled={usedCount(word) > tray.filter((t) => t === word).length - 1}
+            disabled={
+              usedCount(word) > tray.filter((t) => t === word).length - 1
+            }
             speakOnClick={false}
             onClick={() => place(word)}
           />
@@ -94,7 +96,9 @@ export default function BuildStep({
       </div>
 
       {solved && step.en && (
-        <p className="text-2xl font-bold text-green-600">🎉 {step.en}</p>
+        <p className="text-lg font-bold text-green-600 sm:text-2xl">
+          🎉 {step.en}
+        </p>
       )}
     </StepShell>
   );

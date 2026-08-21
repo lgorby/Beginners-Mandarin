@@ -36,13 +36,15 @@ export default function SwapStep({
     >
       {/* The same cue in print, for readers — hidden once the solved
           celebration line shows it in green below. */}
-      {!solved && <p className="text-xl text-zinc-500">{step.en}</p>}
+      {!solved && (
+        <p className="text-base text-zinc-500 sm:text-xl">{step.en}</p>
+      )}
       <SentenceRow
         words={step.sentence}
         blankAt={solved ? undefined : step.blankAt}
       />
 
-      <div className="flex flex-wrap justify-center gap-3">
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
         {step.choices.map((word) => (
           <PicTile
             key={word}
@@ -67,10 +69,14 @@ export default function SwapStep({
       </div>
 
       {solved ? (
-        <p className="text-2xl font-bold text-green-600">🎉 {step.en}</p>
+        <p className="text-lg font-bold text-green-600 sm:text-2xl">
+          🎉 {step.en}
+        </p>
       ) : (
         picked && (
-          <p className="text-lg font-semibold text-amber-600">Try again 🙂</p>
+          <p className="font-semibold text-amber-600 sm:text-lg">
+            Try again 🙂
+          </p>
         )
       )}
     </StepShell>

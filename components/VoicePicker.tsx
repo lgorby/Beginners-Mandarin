@@ -48,7 +48,7 @@ const CONFIG = {
       voicesFor(
         LANGUAGES.es.speechLang,
         LANGUAGES.es.preferredVoices,
-        LANGUAGES.es.wrongVarietyVoices
+        LANGUAGES.es.wrongVarietyVoices,
       ),
     selectedClass: "bg-emerald-600 text-white",
     selectedMetaClass: "text-emerald-100",
@@ -64,9 +64,14 @@ const CONFIG = {
 };
 
 /**
- * Floating voice chooser (bottom-right on every page). Lists the system's
- * voices for one language with a male/female label, previews each, and
- * persists the choice — all app audio in that language then uses it.
+ * Voice chooser. Lists the system's voices for one language with a
+ * male/female label, previews each, and persists the choice — all app
+ * audio in that language then uses it.
+ *
+ * Renders inline (the grown-up layouts put it in the footer bar) rather
+ * than floating: as a `fixed bottom-4 right-4` overlay it sat exactly
+ * where the primary action lands on a short screen. The panel opens
+ * upward so it never pushes the bar off the viewport.
  */
 export default function VoicePicker({
   lang = "zh",
@@ -98,10 +103,10 @@ export default function VoicePicker({
   const hasMale = voices.some((v) => guessVoiceGender(v.name) === "male");
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="relative z-50">
       {open && (
-        <div className="mb-2 w-80 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="absolute bottom-full right-0 mb-2 flex max-h-[80dvh] w-80 max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="mb-2 flex shrink-0 items-center justify-between">
             <h2 className="font-bold">Choose a voice</h2>
             <button
               type="button"
@@ -116,7 +121,7 @@ export default function VoicePicker({
             <p className="text-sm text-zinc-500">{cfg.missing}</p>
           ) : (
             <>
-              <ul className="max-h-64 space-y-1 overflow-y-auto">
+              <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
                 {voices.map((v) => {
                   const gender = guessVoiceGender(v.name);
                   const isSel = (selected ?? voices[0]?.name) === v.name;
@@ -135,7 +140,11 @@ export default function VoicePicker({
                         }`}
                       >
                         <span className="mr-1">
-                          {gender === "male" ? "👨" : gender === "female" ? "👩" : "🗣️"}
+                          {gender === "male"
+                            ? "👨"
+                            : gender === "female"
+                              ? "👩"
+                              : "🗣️"}
                         </span>
                         {v.name.replace(/^Microsoft |^Google /, "")}
                         <span
@@ -149,7 +158,7 @@ export default function VoicePicker({
                   );
                 })}
               </ul>
-              <p className="mt-2 text-xs text-zinc-400">
+              <p className="mt-2 shrink-0 text-xs text-zinc-400">
                 Tap a voice to hear a sample. Your choice is used for all app
                 audio in this language.
                 {!hasMale && cfg.noMale}
@@ -163,10 +172,14 @@ export default function VoicePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold shadow-lg transition hover:shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+        className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900"
         aria-label="Voice settings"
       >
-        {currentGender === "male" ? "👨" : currentGender === "female" ? "👩" : "🗣️"}{" "}
+        {currentGender === "male"
+          ? "👨"
+          : currentGender === "female"
+            ? "👩"
+            : "🗣️"}{" "}
         Voice
       </button>
     </div>
