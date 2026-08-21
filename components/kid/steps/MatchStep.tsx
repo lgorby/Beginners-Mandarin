@@ -10,9 +10,11 @@ import type { Step } from "@/lib/steps";
 export default function MatchStep({
   step,
   onDone,
+  onBack,
 }: {
   step: Extract<Step, { kind: "MATCH" }>;
   onDone: (r: { correct: boolean; spoken: boolean }) => void;
+  onBack?: () => void;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const [missed, setMissed] = useState(false);
@@ -28,6 +30,7 @@ export default function MatchStep({
     <StepShell
       kind="MATCH"
       canContinue={solved}
+      onBack={onBack}
       onContinue={() => onDone({ correct: !missed, spoken: false })}
     >
       <button

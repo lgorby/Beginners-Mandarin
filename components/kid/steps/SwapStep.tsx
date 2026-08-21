@@ -10,9 +10,11 @@ import type { Step } from "@/lib/steps";
 export default function SwapStep({
   step,
   onDone,
+  onBack,
 }: {
   step: Extract<Step, { kind: "SWAP" }>;
   onDone: (r: { correct: boolean; spoken: boolean }) => void;
+  onBack?: () => void;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const [missed, setMissed] = useState(false);
@@ -22,6 +24,7 @@ export default function SwapStep({
     <StepShell
       kind="SWAP"
       canContinue={solved}
+      onBack={onBack}
       onContinue={() => onDone({ correct: !missed, spoken: false })}
     >
       <SentenceRow
