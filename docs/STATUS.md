@@ -1,9 +1,10 @@
 # Where this project is
 
 **Last updated:** 2026-08-20 (late evening)
-**Branch:** `spanish-kid-path` — adds American Spanish to the kid path
-behind a language chooser. PR #1 (kid learning path), PR #2 (hear-first
-speaking flow), and PR #3 (da/xiao pictures) are merged on `master`.
+**Branch:** `two-card-home` — replaces the front door's language chips
+with one door per language. PRs #1–#3 (kid path, speaking flow,
+pictures) and #4 (American Spanish behind a language chooser) are merged
+on `master`.
 
 Read this first when picking the work back up. The spec and plan below
 say what was *intended*; this file says what actually happened and what
@@ -29,8 +30,11 @@ npm run dev            # http://localhost:3000
 
 ## The kid path speaks two languages (2026-08-20)
 
-The kid path now teaches **Mandarin or American (Latin American) Spanish**,
-chosen with flag chips on the front door and in the ⚙️ grown-up settings.
+The kid path now teaches **Mandarin or American (Latin American) Spanish**.
+The front door shows one door per language — Mandarin red, Spanish green,
+each with its own stars and next lesson — and tapping a door IS the
+language choice (`two-card-home`); the ⚙️ grown-up settings keep the flag
+chips (`LangSwitch`) for switching from inside the path.
 How it is built (DRY/SSOT — one engine, N courses):
 
 - `lib/languages.ts` — everything that varies by language except content:
