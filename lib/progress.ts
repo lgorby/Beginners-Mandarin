@@ -5,8 +5,12 @@
 // state are DERIVED from it, so they can never drift out of sync.
 
 import { createClientStore } from "./clientStore";
-import { LESSONS, lessonIndex } from "./curriculum";
+import { lessonById, lessonIndex, lessonsFor } from "./curriculum";
+import type { LangCode } from "./languages";
 
+// One store for every language: lesson ids are globally unique, so a
+// Spanish path and a Mandarin path never collide in `completed`. (The
+// key predates the second language — renaming it would orphan progress.)
 export const PROGRESS_KEY = "mandarin-kid-v1";
 
 export interface Progress {
@@ -16,20 +20,26 @@ export interface Progress {
 const EMPTY: Progress = { completed: {} };
 
 /** The child can always reach the first unfinished lesson, and no further. */
-export function currentLessonId(p: Progress): string {
-  const next = LESSONS.find((l) => !p.completed[l.id]);
-  return (next ?? LESSONS[LESSONS.length - 1]).id;
+export function currentLessonId(p: Progress, lang: LangCode): string {
+  const lessons = lessonsFor(lang);
+  const next = lessons.find((l) => !p.completed[l.id]);
+  return (next ?? lessons[lessons.length - 1]).id;
 }
 
 export function isUnlocked(p: Progress, id: string): boolean {
-  const index = lessonIndex(id);
-  if (index < 0) return false;
-  return index <= lessonIndex(currentLessonId(p));
+  const lesson = lessonById(id);
+  if (!lesson) return false;
+  return lessonIndex(id) <= lessonIndex(currentLessonId(p, lesson.lang));
 }
 
-/** How many lessons are finished. Replaying one does not count twice. */
-export function completedCount(p: Progress): number {
-  return LESSONS.filter((l) => Boolean(p.completed[l.id])).length;
+/** Finished lessons in one language. Replaying one does not count twice. */
+export function completedCount(p: Progress, lang: LangCode): number {
+  return lessonsFor(lang).filter((l) => Boolean(p.completed[l.id])).length;
+}
+
+/** Stars earned across one language's path. */
+export function totalStars(p: Progress, lang: LangCode): number {
+  return lessonsFor(lang).reduce((n, l) => n + starsFor(p, l.id), 0);
 }
 
 export function starsFor(p: Progress, id: string): number {

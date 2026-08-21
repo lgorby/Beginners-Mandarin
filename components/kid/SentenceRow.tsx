@@ -17,7 +17,7 @@ export default function SentenceRow({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
-      {words.map((zh, i) =>
+      {words.map((word, i) =>
         i === blankAt ? (
           <span
             key={`blank-${i}`}
@@ -26,7 +26,7 @@ export default function SentenceRow({
             ?
           </span>
         ) : (
-          <PicTile key={`${zh}-${i}`} zh={zh} size={size} />
+          <PicTile key={`${word}-${i}`} wordKey={word} size={size} />
         )
       )}
     </div>

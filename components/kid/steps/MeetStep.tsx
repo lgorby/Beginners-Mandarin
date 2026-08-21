@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import PicTile from "../PicTile";
 import StepShell from "../StepShell";
 import { getWord } from "@/lib/curriculum";
-import { speak } from "@/lib/speech";
+import { speakWord } from "@/lib/kidSpeech";
 import type { Step } from "@/lib/steps";
 
 export default function MeetStep({
@@ -16,18 +16,18 @@ export default function MeetStep({
 }) {
   // Play the word once on arrival, after the English instruction.
   useEffect(() => {
-    const t = setTimeout(() => speak(step.zh), 900);
+    const t = setTimeout(() => speakWord(step.word), 900);
     return () => clearTimeout(t);
-  }, [step.zh]);
+  }, [step.word]);
 
   return (
     <StepShell
       kind="MEET"
       onContinue={() => onDone({ correct: true, spoken: false })}
     >
-      <PicTile zh={step.zh} size="lg" />
+      <PicTile wordKey={step.word} size="lg" />
       <p className="text-2xl font-semibold text-zinc-500">
-        {getWord(step.zh).en}
+        {getWord(step.word).en}
       </p>
     </StepShell>
   );

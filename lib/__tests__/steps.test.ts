@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LESSONS } from "@/lib/curriculum";
+import { LESSONS, lessonsFor } from "@/lib/curriculum";
+import { LANG_CODES } from "@/lib/languages";
 import { STEP_COPY, buildSteps, type Step } from "@/lib/steps";
 
 const stepsFor = (id: string) => buildSteps(id);
@@ -17,11 +18,12 @@ describe("buildSteps", () => {
   });
 
   it("meets then says each new word, in curriculum order", () => {
-    const steps = stepsFor("i-drink"); // 喝 水 茶
-    const met = steps
-      .filter((s) => s.kind === "MEET")
-      .map((s) => (s.kind === "MEET" ? s.zh : ""));
-    expect(met).toEqual(["喝", "水", "茶"]);
+    const met = (id: string) =>
+      stepsFor(id)
+        .filter((s) => s.kind === "MEET")
+        .map((s) => (s.kind === "MEET" ? s.word : ""));
+    expect(met("i-drink")).toEqual(["喝", "水", "茶"]);
+    expect(met("bebo")).toEqual(["bebo", "agua", "té"]);
   });
 
   it("meets a word before it appears in any BUILD", () => {
@@ -29,14 +31,14 @@ describe("buildSteps", () => {
       const steps = stepsFor(lesson.id);
       steps.forEach((step, i) => {
         if (step.kind !== "BUILD") return;
-        for (const zh of step.answer) {
-          if (!lesson.newWords.includes(zh)) continue;
+        for (const word of step.answer) {
+          if (!lesson.newWords.includes(word)) continue;
           const metAt = steps.findIndex(
-            (s, j) => j < i && s.kind === "MEET" && s.zh === zh
+            (s, j) => j < i && s.kind === "MEET" && s.word === word
           );
           expect(
             metAt,
-            `${zh} used in BUILD before MEET`
+            `${word} used in BUILD before MEET`
           ).toBeGreaterThanOrEqual(0);
         }
       });
@@ -44,10 +46,17 @@ describe("buildSteps", () => {
   });
 
   it("ladders BUILD one prefix at a time, from two words up", () => {
-    const builds = stepsFor("i-drink").filter((s) => s.kind === "BUILD");
-    expect(builds.map((b) => (b.kind === "BUILD" ? b.answer : []))).toEqual([
+    const builds = (id: string) =>
+      stepsFor(id)
+        .filter((s) => s.kind === "BUILD")
+        .map((b) => (b.kind === "BUILD" ? b.answer : []));
+    expect(builds("i-drink")).toEqual([
       ["我", "喝"],
       ["我", "喝", "茶"],
+    ]);
+    expect(builds("bebo")).toEqual([
+      ["yo", "bebo"],
+      ["yo", "bebo", "té"],
     ]);
   });
 
@@ -85,32 +94,60 @@ describe("buildSteps", () => {
   });
 
   it("only ever offers words the child already knows as MATCH distractors", () => {
-    LESSONS.forEach((lesson, i) => {
-      const known = new Set([
-        ...Array.from({ length: i }, (_, j) => LESSONS[j].newWords).flat(),
-        ...lesson.newWords,
-      ]);
+    for (const lang of LANG_CODES) {
+      const lessons = lessonsFor(lang);
+      lessons.forEach((lesson, i) => {
+        const known = new Set([
+          ...Array.from({ length: i }, (_, j) => lessons[j].newWords).flat(),
+          ...lesson.newWords,
+        ]);
+        for (const step of stepsFor(lesson.id)) {
+          if (step.kind !== "MATCH") continue;
+          for (const choice of step.choices)
+            expect(known.has(choice), `${lesson.id}: ${choice}`).toBe(true);
+        }
+      });
+    }
+  });
+
+  it("never mixes languages within one lesson's steps", () => {
+    for (const lesson of LESSONS) {
+      const own = new Set(
+        lessonsFor(lesson.lang).flatMap((l) => l.newWords)
+      );
       for (const step of stepsFor(lesson.id)) {
-        if (step.kind !== "MATCH") continue;
-        for (const choice of step.choices) expect(known.has(choice)).toBe(true);
+        const words =
+          step.kind === "MEET"
+            ? [step.word]
+            : step.kind === "MATCH"
+              ? step.choices
+              : step.kind === "SAY"
+                ? step.words
+                : step.kind === "BUILD"
+                  ? step.answer
+                  : [...step.sentence, ...step.choices];
+        for (const word of words)
+          expect(own.has(word), `${lesson.id}: ${word}`).toBe(true);
       }
-    });
+    }
   });
 
   it("emits no MATCH when a lesson teaches fewer than two words", () => {
     expect(kinds(stepsFor("asking"))).not.toContain("MATCH"); // 吗 only
     expect(kinds(stepsFor("saying-no"))).not.toContain("MATCH"); // 不 only
+    expect(kinds(stepsFor("no"))).not.toContain("MATCH"); // Spanish "no" only
   });
 
   it("is deterministic — the same lesson yields the same steps", () => {
     expect(stepsFor("i-like")).toEqual(stepsFor("i-like"));
+    expect(stepsFor("quiero")).toEqual(stepsFor("quiero"));
   });
 
   // A lesson that teaches one word exists to drill that word. Blanking the
   // first difference instead made lesson 6 ask about 喝 and 是 and never
   // once about 吗 — green tests, wrong teaching.
   it("drills the taught word when a lesson teaches only one", () => {
-    for (const id of ["asking", "saying-no"]) {
+    for (const id of ["asking", "saying-no", "no"]) {
       const lesson = LESSONS.find((l) => l.id === id)!;
       const drilled = lesson.newWords[0];
       const swaps = stepsFor(id).filter((s) => s.kind === "SWAP");
@@ -125,16 +162,18 @@ describe("buildSteps", () => {
   // Taking the earliest-taught words offered 你 and 好 in every single
   // exercise, teaching "never pick the first two" instead of the word.
   it("does not reuse the same two distractors everywhere", () => {
-    const distractors = new Set<string>();
-    for (const lesson of LESSONS) {
-      for (const step of stepsFor(lesson.id)) {
-        if (step.kind !== "MATCH" && step.kind !== "SWAP") continue;
-        for (const choice of step.choices) {
-          if (choice !== step.answer) distractors.add(choice);
+    for (const lang of LANG_CODES) {
+      const distractors = new Set<string>();
+      for (const lesson of lessonsFor(lang)) {
+        for (const step of stepsFor(lesson.id)) {
+          if (step.kind !== "MATCH" && step.kind !== "SWAP") continue;
+          for (const choice of step.choices) {
+            if (choice !== step.answer) distractors.add(choice);
+          }
         }
       }
+      expect(distractors.size, lang).toBeGreaterThan(6);
     }
-    expect(distractors.size).toBeGreaterThan(6);
   });
 
   it("offers distractors that fit the blank's slot where it can", () => {

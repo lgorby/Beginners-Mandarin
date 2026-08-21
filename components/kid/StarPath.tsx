@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import PicTile from "./PicTile";
 import ParentSettings from "./ParentSettings";
-import { LESSONS } from "@/lib/curriculum";
+import { lessonsFor } from "@/lib/curriculum";
 import {
   completedCount,
   currentLessonId,
@@ -14,6 +14,7 @@ import {
   starsFor,
   subscribeProgress,
 } from "@/lib/progress";
+import { useKidLang } from "./useKidLang";
 
 export default function StarPath() {
   // Progress lives in localStorage. useSyncExternalStore reads it without
@@ -24,11 +25,13 @@ export default function StarPath() {
     getProgressSnapshot,
     getProgressServerSnapshot
   );
+  const lang = useKidLang();
+  const lessons = lessonsFor(lang);
 
-  const current = currentLessonId(progress);
-  const currentLesson = LESSONS.find((l) => l.id === current)!;
-  const done = completedCount(progress);
-  const finished = done === LESSONS.length;
+  const current = currentLessonId(progress, lang);
+  const currentLesson = lessons.find((l) => l.id === current)!;
+  const done = completedCount(progress, lang);
+  const finished = done === lessons.length;
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -55,13 +58,13 @@ export default function StarPath() {
       </Link>
 
       <ol className="mt-6 space-y-3">
-        {LESSONS.map((lesson) => {
+        {lessons.map((lesson) => {
           const unlocked = isUnlocked(progress, lesson.id);
           const stars = starsFor(progress, lesson.id);
           const row = (
             <span className="flex w-full items-center gap-4 rounded-3xl border-4 border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
               <PicTile
-                zh={lesson.icon}
+                wordKey={lesson.icon}
                 size="sm"
                 showText={false}
                 speakOnClick={false}

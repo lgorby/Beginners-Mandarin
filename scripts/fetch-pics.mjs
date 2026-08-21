@@ -1,13 +1,16 @@
-// Copies the OpenMoji SVGs the curriculum needs into public/pics/, naming
-// each by the word's `id`. Only the ~20 files actually used are vendored —
+// Copies the OpenMoji SVGs the curricula need into public/pics/, naming
+// each by the word's `id`. Only the files actually used are vendored —
 // the openmoji package itself is a dev dependency and never ships.
 // Hand-authored pictures (art.from === "custom") are already committed to
-// public/pics/ and are only verified here.
+// public/pics/ and are only verified here; art.from === "copy" duplicates
+// a committed picture under the new word's id.
 //
 // Run: npm run pics
 //
-// lib/curriculum.ts is imported directly rather than parsed, so it stays
-// the single source of truth. Node 24 strips TypeScript types natively.
+// The course files are imported directly rather than parsed, so they stay
+// the single source of truth. Node 24 strips TypeScript types natively;
+// lib/curriculum.ts itself uses extensionless imports Node cannot
+// resolve, so the runtime-standalone course files are imported instead.
 
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -24,13 +27,20 @@ if (!existsSync(srcDir)) {
   process.exit(1);
 }
 
-const { WORDS } = await import(
-  pathToFileURL(join(root, "lib", "curriculum.ts")).href
-);
+const courseExports = [
+  ["zh.ts", "zhCourse"],
+  ["es.ts", "esCourse"],
+];
+const words = [];
+for (const [file, name] of courseExports) {
+  const mod = await import(
+    pathToFileURL(join(root, "lib", "courses", file)).href
+  );
+  words.push(...mod[name].words);
+}
 
-const words = Object.values(WORDS);
 if (words.length === 0) {
-  console.error("lib/curriculum.ts exported no words.");
+  console.error("The course files exported no words.");
   process.exit(1);
 }
 
@@ -45,13 +55,20 @@ for (const word of words) {
 
   if (word.art.from === "custom") {
     if (existsSync(dest)) kept++;
-    else missing.push(`${word.zh} — hand-authored ${word.id}.svg not found`);
+    else missing.push(`${word.text} — hand-authored ${word.id}.svg not found`);
     continue;
   }
 
-  const src = join(srcDir, `${word.art.hex}.svg`);
+  const src =
+    word.art.from === "copy"
+      ? join(outDir, `${word.art.of}.svg`)
+      : join(srcDir, `${word.art.hex}.svg`);
   if (!existsSync(src)) {
-    missing.push(`${word.zh} — no OpenMoji SVG for codepoint ${word.art.hex}`);
+    missing.push(
+      word.art.from === "copy"
+        ? `${word.text} — no committed picture ${word.art.of}.svg to copy`
+        : `${word.text} — no OpenMoji SVG for codepoint ${word.art.hex}`
+    );
     continue;
   }
   copyFileSync(src, dest);
@@ -59,7 +76,7 @@ for (const word of words) {
 }
 
 console.log(
-  `Vendored ${copied} OpenMoji SVGs into public/pics/ (${kept} hand-authored kept)`
+  `Vendored ${copied} SVGs into public/pics/ (${kept} hand-authored kept)`
 );
 
 if (missing.length > 0) {

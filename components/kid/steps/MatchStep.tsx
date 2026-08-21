@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PicTile from "../PicTile";
 import StepShell from "../StepShell";
-import { speak } from "@/lib/speech";
+import { speakWord } from "@/lib/kidSpeech";
 import type { Step } from "@/lib/steps";
 
 /** A wrong answer reveals and lets the child retry. It never blocks. */
@@ -18,7 +18,7 @@ export default function MatchStep({
   const [missed, setMissed] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => speak(step.answer), 900);
+    const t = setTimeout(() => speakWord(step.answer), 900);
     return () => clearTimeout(t);
   }, [step.answer]);
 
@@ -32,7 +32,7 @@ export default function MatchStep({
     >
       <button
         type="button"
-        onClick={() => speak(step.answer)}
+        onClick={() => speakWord(step.answer)}
         className="rounded-full bg-red-50 px-8 py-6 text-5xl dark:bg-red-950"
         aria-label="Play the word again"
       >
@@ -40,21 +40,21 @@ export default function MatchStep({
       </button>
 
       <div className="flex flex-wrap justify-center gap-3">
-        {step.choices.map((zh) => {
-          const wrong = picked === zh && zh !== step.answer;
+        {step.choices.map((word) => {
+          const wrong = picked === word && word !== step.answer;
           return (
-            <span key={zh} className={wrong ? "animate-pulse" : ""}>
+            <span key={word} className={wrong ? "animate-pulse" : ""}>
               <PicTile
-                zh={zh}
+                wordKey={word}
                 size="md"
                 showText={false}
-                selected={solved && zh === step.answer}
+                selected={solved && word === step.answer}
                 disabled={solved}
                 speakOnClick={false}
                 onClick={() => {
-                  setPicked(zh);
-                  speak(zh);
-                  if (zh !== step.answer) setMissed(true);
+                  setPicked(word);
+                  speakWord(word);
+                  if (word !== step.answer) setMissed(true);
                 }}
               />
             </span>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PicTile from "../PicTile";
 import StepShell from "../StepShell";
-import { speak } from "@/lib/speech";
+import { speakSentence, speakWord } from "@/lib/kidSpeech";
 import type { Step } from "@/lib/steps";
 
 /**
@@ -24,28 +24,30 @@ export default function BuildStep({
   const [placed, setPlaced] = useState<string[]>([]);
   const [missed, setMissed] = useState(false);
   const tray = scramble(step.answer);
-  const target = step.answer.join("");
+  const question = step.en.endsWith("?");
 
   // Say the sentence the child is meant to build — without hearing it,
   // "put them in order" is a guessing game, not listening comprehension.
   // The 900ms delay lets the English instruction finish first.
   useEffect(() => {
-    const t = setTimeout(() => speak(target), 900);
+    const t = setTimeout(() => speakSentence(step.answer, { question }), 900);
     return () => clearTimeout(t);
-  }, [target]);
+  }, [step.answer, question]);
 
   const solved = placed.length === step.answer.length;
-  const usedCount = (zh: string) => placed.filter((p) => p === zh).length;
+  const usedCount = (word: string) => placed.filter((p) => p === word).length;
 
-  const place = (zh: string) => {
-    const next = [...placed, zh];
-    if (zh !== step.answer[placed.length]) {
+  const place = (word: string) => {
+    const next = [...placed, word];
+    if (word !== step.answer[placed.length]) {
       setMissed(true);
-      speak(zh);
+      speakWord(word);
       return; // wrong slot — the tile simply doesn't stick
     }
     setPlaced(next);
-    speak(next.join(""));
+    speakSentence(next, {
+      question: question && next.length === step.answer.length,
+    });
   };
 
   return (
@@ -56,7 +58,7 @@ export default function BuildStep({
     >
       <button
         type="button"
-        onClick={() => speak(target)}
+        onClick={() => speakSentence(step.answer, { question })}
         className="rounded-full bg-red-50 px-6 py-4 text-3xl dark:bg-red-950"
         aria-label="Hear the sentence again"
       >
@@ -69,19 +71,21 @@ export default function BuildStep({
             Tap the pictures in order
           </span>
         ) : (
-          placed.map((zh, i) => <PicTile key={`${zh}-${i}`} zh={zh} size="sm" />)
+          placed.map((word, i) => (
+            <PicTile key={`${word}-${i}`} wordKey={word} size="sm" />
+          ))
         )}
       </div>
 
       <div className="flex flex-wrap justify-center gap-3">
-        {tray.map((zh, i) => (
+        {tray.map((word, i) => (
           <PicTile
-            key={`${zh}-${i}`}
-            zh={zh}
+            key={`${word}-${i}`}
+            wordKey={word}
             size="md"
-            disabled={usedCount(zh) > tray.filter((t) => t === zh).length - 1}
+            disabled={usedCount(word) > tray.filter((t) => t === word).length - 1}
             speakOnClick={false}
-            onClick={() => place(zh)}
+            onClick={() => place(word)}
           />
         ))}
       </div>

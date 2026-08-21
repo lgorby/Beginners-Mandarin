@@ -7,11 +7,14 @@ import { setPinyinVisible } from "@/lib/pinyinPref";
 import { setGentleTones } from "@/lib/tonePref";
 import { usePinyinVisible } from "./usePinyinVisible";
 import { useGentleTones } from "../useGentleTones";
+import { useKidLang } from "./useKidLang";
+import LangSwitch from "./LangSwitch";
 
 export default function ParentSettings() {
   const [open, setOpen] = useState(false);
   const visible = usePinyinVisible();
   const gentle = useGentleTones("kid");
+  const lang = useKidLang();
 
   return (
     <>
@@ -29,50 +32,67 @@ export default function ParentSettings() {
           <div className="w-full max-w-md rounded-3xl bg-white p-6 dark:bg-zinc-900">
             <h2 className="text-xl font-bold">For grown-ups</h2>
 
-            <label className="mt-4 flex items-center justify-between gap-4">
-              <span>
-                Show pinyin
+            <div className="mt-4">
+              <span className="block">
+                Language
                 <span className="block text-sm text-zinc-500">
-                  Off by default — young children read the picture, not the
-                  spelling.
+                  Each language has its own path and its own stars.
                 </span>
               </span>
-              <input
-                type="checkbox"
-                checked={visible}
-                onChange={(e) => setPinyinVisible(e.target.checked)}
-                className="h-6 w-6"
-              />
-            </label>
+              <div className="mt-2">
+                <LangSwitch />
+              </div>
+            </div>
 
-            <label className="mt-4 flex items-center justify-between gap-4">
-              <span>
-                Gentle tones
-                <span className="block text-sm text-zinc-500">
-                  On by default — young children earn the win with the
-                  right sounds, and tones are coached playfully. Turn off
-                  to require correct tones for a &quot;Perfect&quot;.
-                </span>
-              </span>
-              <input
-                type="checkbox"
-                checked={gentle}
-                onChange={(e) => setGentleTones("kid", e.target.checked)}
-                className="h-6 w-6"
-              />
-            </label>
+            {lang === "zh" && (
+              <>
+                <label className="mt-4 flex items-center justify-between gap-4">
+                  <span>
+                    Show pinyin
+                    <span className="block text-sm text-zinc-500">
+                      Off by default — young children read the picture, not the
+                      spelling.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={visible}
+                    onChange={(e) => setPinyinVisible(e.target.checked)}
+                    className="h-6 w-6"
+                  />
+                </label>
 
-            <Link
-              href="/grown-ups"
-              className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 text-center font-semibold dark:bg-zinc-800"
-            >
-              Tones, dictionary, writing &amp; more →
-            </Link>
+                <label className="mt-4 flex items-center justify-between gap-4">
+                  <span>
+                    Gentle tones
+                    <span className="block text-sm text-zinc-500">
+                      On by default — young children earn the win with the
+                      right sounds, and tones are coached playfully. Turn off
+                      to require correct tones for a &quot;Perfect&quot;.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={gentle}
+                    onChange={(e) => setGentleTones("kid", e.target.checked)}
+                    className="h-6 w-6"
+                  />
+                </label>
+
+                <Link
+                  href="/grown-ups"
+                  className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 text-center font-semibold dark:bg-zinc-800"
+                >
+                  Tones, dictionary, writing &amp; more →
+                </Link>
+              </>
+            )}
 
             <button
               type="button"
               onClick={() => {
-                if (!confirm("Erase all stars and start over?")) return;
+                if (!confirm("Erase all stars (every language) and start over?"))
+                  return;
                 localStorage.removeItem(PROGRESS_KEY);
                 reloadProgress(); // drop the cached snapshot; the map re-renders
                 setOpen(false);

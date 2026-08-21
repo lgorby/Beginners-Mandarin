@@ -7,7 +7,7 @@
 // kept as a floor, never a ceiling.
 
 import { pinyinFor } from "./dictionary";
-import { normalizeZh, scoreMatch } from "./match";
+import { normalizeSpeech, scoreMatch } from "./match";
 import { toDiacritics } from "./pinyin";
 
 /** How the attempt covered one target syllable. */
@@ -35,7 +35,7 @@ interface Syllable {
 }
 
 function syllables(text: string): Syllable[] {
-  return pinyinFor(normalizeZh(text)).map((s) => ({
+  return pinyinFor(normalizeSpeech(text)).map((s) => ({
     raw: s,
     base: s.toLowerCase().replace(/[0-9\s:']/g, ""),
     tone: /[1-5]/.exec(s)?.[0] ?? "5",
@@ -100,7 +100,7 @@ export function scorePronunciation(
     syllables: missAll(),
   };
   for (const c of candidates) {
-    if (!normalizeZh(c)) continue;
+    if (!normalizeSpeech(c)) continue;
     let score = scoreMatch(target, c);
     let toneHint = false;
     let marks = missAll();
