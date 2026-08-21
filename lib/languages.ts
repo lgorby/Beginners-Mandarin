@@ -32,6 +32,18 @@ export interface Language {
    * VoicePicker owns that message.
    */
   voicePack?: string;
+  /**
+   * Voice tags to try best-first when picking a TTS voice, after
+   * speechLang itself — the regions that sound like this course.
+   */
+  preferredVoices?: string[];
+  /**
+   * Voice tags that teach the WRONG sounds for this course. Ranked
+   * last when picking a voice, and warned about in settings when one
+   * is all the system has. es-ES is Castilian: "gracias" comes out
+   * "grathias", which is not the American Spanish being taught.
+   */
+  wrongVarietyVoices?: string[];
 }
 
 export const LANGUAGES: Record<LangCode, Language> = {
@@ -55,6 +67,10 @@ export const LANGUAGES: Record<LangCode, Language> = {
     joiner: " ",
     wrapQuestion: (s) => `¿${s}?`,
     voicePack: "Spanish (Mexico)",
+    // Any Latin American voice beats a European one; es-US and es-419
+    // ("Latin America" as a region tag) are the common installed ones.
+    preferredVoices: ["es-US", "es-419"],
+    wrongVarietyVoices: ["es-ES"],
   },
 };
 

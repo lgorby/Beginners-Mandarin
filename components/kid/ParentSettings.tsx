@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { LANGUAGES } from "@/lib/languages";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
-import { hasVoiceFor, subscribeVoices } from "@/lib/speech";
+import { bestVoiceFor, subscribeVoices } from "@/lib/speech";
 import { setPinyinVisible } from "@/lib/pinyinPref";
 import { setGentleTones } from "@/lib/tonePref";
 import { usePinyinVisible } from "./usePinyinVisible";
@@ -18,13 +18,25 @@ export default function ParentSettings() {
   const gentle = useGentleTones("kid");
   const lang = useKidLang();
   const language = LANGUAGES[lang];
+  // The tag of the voice speak() would actually use ("" = none at all).
   // Voices load async in some browsers; the voiceschanged subscription
-  // re-reads once they arrive. Server renders assume the voice exists so
-  // the warning never flashes on a healthy machine.
-  const voiceInstalled = useSyncExternalStore(
+  // re-reads once they arrive. Server renders assume the right voice
+  // exists so no warning flashes on a healthy machine.
+  const bestVoiceTag = useSyncExternalStore(
     subscribeVoices,
-    () => hasVoiceFor(language.speechLang),
-    () => true
+    () =>
+      bestVoiceFor(
+        language.speechLang,
+        language.preferredVoices,
+        language.wrongVarietyVoices
+      )?.lang.toLowerCase().replace("_", "-") ?? "",
+    () => language.speechLang.toLowerCase()
+  );
+  const voiceInstalled = bestVoiceTag !== "";
+  // The best the system has is still a variety this course doesn't teach
+  // (a Castilian voice reading the American Spanish course).
+  const wrongVariety = Boolean(
+    language.wrongVarietyVoices?.some((t) => t.toLowerCase() === bestVoiceTag)
   );
 
   return (
@@ -62,6 +74,18 @@ export default function ParentSettings() {
                 added. In Windows: Settings → Time &amp; Language → Speech
                 → Add voices → <strong>{language.voicePack}</strong>, then
                 restart the browser.
+              </p>
+            )}
+
+            {language.voicePack && voiceInstalled && wrongVariety && (
+              <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                🗣️ Only a European {language.name} voice is installed, so
+                words sound Castilian (&ldquo;gracias&rdquo; like
+                &ldquo;grathias&rdquo;) — this course teaches Latin
+                American {language.name}. In Windows: Settings → Time
+                &amp; Language → Speech → Add voices →{" "}
+                <strong>{language.voicePack}</strong>, then restart the
+                browser.
               </p>
             )}
 

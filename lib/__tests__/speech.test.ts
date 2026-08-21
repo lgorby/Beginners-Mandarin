@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestCandidate, scoreMatch } from "@/lib/speech";
+import { bestCandidate, rankVoices, scoreMatch } from "@/lib/speech";
 
 describe("scoreMatch", () => {
   it("gives 100 for an exact match", () => {
@@ -60,5 +60,45 @@ describe("bestCandidate", () => {
       transcript: "",
       score: -1,
     });
+  });
+});
+
+describe("rankVoices", () => {
+  // The Spanish course's real configuration: es-MX first, then other
+  // Latin American tags, Castilian dead last.
+  const PREFER = ["es-MX", "es-US", "es-419"];
+  const AVOID = ["es-ES"];
+  const v = (lang: string) => ({ lang });
+  const langs = (voices: { lang: string }[]) => voices.map((x) => x.lang);
+
+  it("puts a Latin American voice above a Castilian one", () => {
+    expect(langs(rankVoices([v("es-ES"), v("es-US")], PREFER, AVOID))).toEqual([
+      "es-US",
+      "es-ES",
+    ]);
+  });
+
+  it("prefers the exact requested region above all", () => {
+    expect(
+      langs(rankVoices([v("es-ES"), v("es-US"), v("es-MX")], PREFER, AVOID))
+    ).toEqual(["es-MX", "es-US", "es-ES"]);
+  });
+
+  it("ranks an unlisted region above an avoided one", () => {
+    expect(langs(rankVoices([v("es-ES"), v("es-AR")], PREFER, AVOID))).toEqual([
+      "es-AR",
+      "es-ES",
+    ]);
+  });
+
+  it("still returns an avoided voice when it is all there is", () => {
+    expect(langs(rankVoices([v("es-ES")], PREFER, AVOID))).toEqual(["es-ES"]);
+  });
+
+  it("compares tags case-insensitively and across _ vs -", () => {
+    expect(langs(rankVoices([v("es_es"), v("ES-us")], PREFER, AVOID))).toEqual([
+      "ES-us",
+      "es_es",
+    ]);
   });
 });

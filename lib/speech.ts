@@ -20,20 +20,50 @@ export function getMandarinVoices(): SpeechSynthesisVoice[] {
   return cachedVoices ?? [];
 }
 
+const normTag = (s: string) => s.toLowerCase().replace("_", "-");
+
 /**
- * Voices for a BCP-47 tag, best match first: exact region ("es-MX")
- * before same language ("es-ES"). Unlike the Mandarin list this is not
- * cached — it is only read at speak() time.
+ * Order voices best-first: `prefer` tags in their given order, then any
+ * unlisted tag, then `avoid` tags last. Pure and exported for tests —
+ * this ranking is why a Castilian voice can never beat a Latin American
+ * one for the Spanish course.
  */
-function voicesFor(lang: string): SpeechSynthesisVoice[] {
+export function rankVoices<T extends { lang: string }>(
+  voices: T[],
+  prefer: string[],
+  avoid: string[] = []
+): T[] {
+  const p = prefer.map(normTag);
+  const a = avoid.map(normTag);
+  const score = (v: T) => {
+    const tag = normTag(v.lang);
+    const i = p.indexOf(tag);
+    if (i >= 0) return i;
+    return a.includes(tag) ? p.length + 1 : p.length;
+  };
+  return [...voices].sort((x, y) => score(x) - score(y));
+}
+
+/**
+ * Voices for a BCP-47 tag, best match first: the requested region, then
+ * `prefer` in order, then other same-language regions, with `avoid`
+ * varieties last. Unlike the Mandarin list this is not cached — it is
+ * only read at speak() time.
+ */
+function voicesFor(
+  lang: string,
+  prefer: string[] = [],
+  avoid: string[] = []
+): SpeechSynthesisVoice[] {
   if (typeof window === "undefined" || !window.speechSynthesis) return [];
-  const wanted = lang.toLowerCase();
-  const prefix = wanted.split("-")[0];
-  const tag = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace("_", "-");
-  return window.speechSynthesis
+  const prefix = normTag(lang).split("-")[0];
+  const matches = window.speechSynthesis
     .getVoices()
-    .filter((v) => tag(v) === prefix || tag(v).startsWith(`${prefix}-`))
-    .sort((a, b) => Number(tag(b) === wanted) - Number(tag(a) === wanted));
+    .filter((v) => {
+      const tag = normTag(v.lang);
+      return tag === prefix || tag.startsWith(`${prefix}-`);
+    });
+  return rankVoices(matches, [lang, ...prefer], avoid);
 }
 
 // --- Voice preference (persisted, used by every speak() call) -----------
@@ -89,6 +119,18 @@ export function hasVoiceFor(lang: string): boolean {
   return voicesFor(lang).length > 0;
 }
 
+/**
+ * The voice speak() would actually use for a language, so settings can
+ * warn when the best available is still the wrong variety.
+ */
+export function bestVoiceFor(
+  lang: string,
+  prefer: string[] = [],
+  avoid: string[] = []
+): SpeechSynthesisVoice | undefined {
+  return voicesFor(lang, prefer, avoid)[0];
+}
+
 /** Subscribe to the voice list changing, shaped for useSyncExternalStore. */
 export function subscribeVoices(cb: () => void): () => void {
   if (typeof window === "undefined" || !window.speechSynthesis) {
@@ -107,7 +149,16 @@ export function subscribeVoices(cb: () => void): () => void {
  */
 export function speak(
   text: string,
-  opts?: { rate?: number; voiceName?: string; onDone?: () => void; lang?: string }
+  opts?: {
+    rate?: number;
+    voiceName?: string;
+    onDone?: () => void;
+    lang?: string;
+    /** Voice tags to try after `lang` itself (regional preference). */
+    voicePrefer?: string[];
+    /** Voice tags to use only as a last resort (wrong variety). */
+    voiceAvoid?: string[];
+  }
 ) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
@@ -116,7 +167,9 @@ export function speak(
   const u = new SpeechSynthesisUtterance(text);
   u.lang = lang;
   u.rate = opts?.rate ?? 0.85;
-  const voices = isMandarin ? getMandarinVoices() : voicesFor(lang);
+  const voices = isMandarin
+    ? getMandarinVoices()
+    : voicesFor(lang, opts?.voicePrefer, opts?.voiceAvoid);
   const wanted =
     opts?.voiceName ?? (isMandarin ? getPreferredVoiceName() : null);
   const chosen =
