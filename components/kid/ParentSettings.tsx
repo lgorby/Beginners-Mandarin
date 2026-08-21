@@ -121,9 +121,13 @@ export default function ParentSettings() {
                 🗣️ The {language.name} voice chosen in the Voice picker is
                 a European one, so words sound Castilian
                 (&ldquo;gracias&rdquo; like &ldquo;grathias&rdquo;) — this
-                course teaches Latin American {language.name}. Open the
-                Voice picker and choose a different voice to fix it
-                everywhere, the kids&apos; lessons included.
+                course teaches Latin American {language.name}. The Voice
+                picker sits bottom-right on the grown-up pages (
+                <Link href={language.grownUpsPath} className="underline">
+                  open them below
+                </Link>
+                ) — choose a different voice there to fix it everywhere,
+                the kids&apos; lessons included.
               </p>
             )}
 
@@ -161,15 +165,15 @@ export default function ParentSettings() {
                     className="h-6 w-6"
                   />
                 </label>
-
-                <Link
-                  href="/mandarin-grown-ups"
-                  className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 text-center font-semibold dark:bg-zinc-800"
-                >
-                  Tones, dictionary, writing &amp; more →
-                </Link>
               </>
             )}
+
+            <Link
+              href={language.grownUpsPath}
+              className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 text-center font-semibold dark:bg-zinc-800"
+            >
+              {language.grownUpsLabel}
+            </Link>
 
             <button
               type="button"
