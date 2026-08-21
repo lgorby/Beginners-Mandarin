@@ -4,7 +4,12 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { LANGUAGES } from "@/lib/languages";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
-import { effectiveVoiceFor, subscribeVoices } from "@/lib/speech";
+import {
+  effectiveVoiceFor,
+  rankedVoiceTag,
+  subscribeVoices,
+  voiceWarningKind,
+} from "@/lib/speech";
 import { setPinyinVisible } from "@/lib/pinyinPref";
 import { setGentleTones } from "@/lib/tonePref";
 import { usePinyinVisible } from "./usePinyinVisible";
@@ -37,11 +42,28 @@ export default function ParentSettings() {
     () => language.speechLang.toLowerCase()
   );
   const voiceInstalled = voiceTag !== "";
-  // The voice in use is a variety this course doesn't teach (a Castilian
-  // voice reading the American Spanish course) — whether the system had
-  // nothing better or a grown-up picked it in the voice picker.
-  const wrongVariety = Boolean(
-    language.wrongVarietyVoices?.some((t) => t.toLowerCase() === voiceTag)
+  // The best-ranked voice for this language, blind to any saved
+  // preference — diffed against voiceTag below to tell "nothing better
+  // is installed" apart from "a grown-up picked the wrong one on
+  // purpose" in the voice picker.
+  const rankedTag = useSyncExternalStore(
+    subscribeVoices,
+    () =>
+      rankedVoiceTag(
+        language.speechLang,
+        language.preferredVoices,
+        language.wrongVarietyVoices
+      ),
+    () => language.speechLang.toLowerCase()
+  );
+  // Which wrong-variety warning (if any) to show. Installing a voice
+  // pack can't fix a case where a grown-up's saved choice overrode a
+  // ranking that would have picked correctly — the two need different
+  // remedies, so the settings warning has to tell them apart.
+  const voiceWarning = voiceWarningKind(
+    voiceTag,
+    rankedTag,
+    language.wrongVarietyVoices ?? []
   );
 
   return (
@@ -82,7 +104,7 @@ export default function ParentSettings() {
               </p>
             )}
 
-            {language.voicePack && voiceInstalled && wrongVariety && (
+            {language.voicePack && voiceWarning === "install" && (
               <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                 🗣️ Only a European {language.name} voice is installed, so
                 words sound Castilian (&ldquo;gracias&rdquo; like
@@ -91,6 +113,17 @@ export default function ParentSettings() {
                 &amp; Language → Speech → Add voices →{" "}
                 <strong>{language.voicePack}</strong>, then restart the
                 browser.
+              </p>
+            )}
+
+            {language.voicePack && voiceWarning === "picker" && (
+              <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                🗣️ The {language.name} voice chosen in the Voice picker is
+                a European one, so words sound Castilian
+                (&ldquo;gracias&rdquo; like &ldquo;grathias&rdquo;) — this
+                course teaches Latin American {language.name}. Open the
+                Voice picker and choose a different voice to fix it
+                everywhere, the kids&apos; lessons included.
               </p>
             )}
 

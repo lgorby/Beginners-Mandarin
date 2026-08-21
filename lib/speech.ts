@@ -175,6 +175,44 @@ export function effectiveVoiceFor(
   );
 }
 
+/**
+ * The tag of the best-ranked voice for a language on its own — the same
+ * ranking effectiveVoiceFor() draws from, but blind to any saved
+ * preference. Diffing this against effectiveVoiceFor()'s tag is how the
+ * kid-path warning tells "nothing better is installed" apart from "a
+ * grown-up picked the wrong one on purpose" in the voice picker.
+ */
+export function rankedVoiceTag(
+  lang: string,
+  prefer: string[] = [],
+  avoid: string[] = []
+): string {
+  const v = voicesFor(lang, prefer, avoid)[0];
+  return v ? normTag(v.lang) : "";
+}
+
+export type VoiceWarningKind = "none" | "install" | "picker";
+
+/**
+ * Which wrong-variety warning (if any) a kid-path parent needs, given the
+ * tag speak() would actually use and the tag the ranking alone would have
+ * picked. They differ only when a saved preference overrides a ranking
+ * that would have picked correctly — installing a voice pack cannot fix
+ * that case, only reopening the voice picker can, so the two need
+ * different remedies. Pure: takes tags, not voices, so it never touches
+ * window and can be unit tested directly.
+ */
+export function voiceWarningKind(
+  chosenTag: string,
+  rankedTag: string,
+  avoid: string[]
+): VoiceWarningKind {
+  const a = avoid.map(normTag);
+  const isAvoided = (tag: string) => tag !== "" && a.includes(normTag(tag));
+  if (!isAvoided(chosenTag)) return "none";
+  return isAvoided(rankedTag) ? "install" : "picker";
+}
+
 /** Subscribe to the voice list changing, shaped for useSyncExternalStore. */
 export function subscribeVoices(cb: () => void): () => void {
   if (typeof window === "undefined" || !window.speechSynthesis) {
