@@ -323,8 +323,18 @@ hub pages, kid map, and a phone-landscape lesson step. `npm test` 161
 passed, `tsc --noEmit` clean, lint clean but for the pre-existing
 fit-check.mjs warning.
 
-Still open: the real-device mic race (step 1 above), unchanged. Worth
-a real-device glance too: page-flip feel on actual touch hardware.
+~~Still open: the real-device mic race (step 1 above)~~ — **all
+real-device checks passed** on an Android/Chrome phone later the same
+day: swipe page-flipping, TTS sound, mic recognition, and the mic race
+itself (tapping a word mid-utterance keeps the mic shut). Getting
+there took three phone-only fixes — Next dev's allowedDevOrigins
+403ing all JS over LAN (now opt-in via `ALLOWED_DEV_ORIGIN`),
+clip-path eating touch hit-testing, and honoring touchcancel — plus a
+secure-context gate: recognition reports unsupported over plain HTTP,
+where the mic can never open, instead of pulsing at "getting ready…".
+Phone testing over LAN needs the chrome://flags "Insecure origins
+treated as secure" entry (or `adb reverse`) for the mic to exist at
+all.
 
 **Later the same day:** swipe gestures were added on top (branch
 `paged-swipe`). Touch-only — left/up flips forward, right/down back, a
