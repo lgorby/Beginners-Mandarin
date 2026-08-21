@@ -25,9 +25,16 @@ Copy-Item "$root\.next\static\*" "$dist\app\.next\static" -Recurse -Force
 if (Test-Path "$root\public") {
   Copy-Item "$root\public" "$dist\app\public" -Recurse -Force
 }
-# The dictionary file is read at runtime with fs, so bundle it explicitly.
+# The dictionaries are opened at runtime with fs, so Next's standalone
+# tracing never sees them - they have to be named here. A missing one
+# doesn't fail the build, it 500s the first search in the shipped app,
+# so verify each landed rather than trusting Copy-Item.
+# lib/__tests__/portableBuild.test.ts fails if this list falls behind.
 New-Item -ItemType Directory -Force "$dist\app\data" | Out-Null
-Copy-Item "$root\data\cedict_ts.u8" "$dist\app\data\" -Force
+foreach ($f in @("cedict_ts.u8", "wikdict_es_en.tsv")) {
+  Copy-Item "$root\data\$f" "$dist\app\data\" -Force
+  if (-not (Test-Path "$dist\app\data\$f")) { throw "data\$f missing from package" }
+}
 
 Write-Host "== 3/5 Bundling Node runtime =="
 New-Item -ItemType Directory -Force "$dist\node" | Out-Null
