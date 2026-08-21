@@ -191,17 +191,17 @@ export function buildSteps(lessonId: string): Step[] {
   });
 
   // 3. Ladder the build sentence: one BUILD per prefix of length 2..N.
-  // Prefixes are built by ear (a fragment has no meaningful English);
-  // the full sentence is built from its English meaning — the child
-  // produces it rather than echoing it, the way translation apps mix
-  // listening and translating exercises.
+  // Prefixes are built by ear, revealing their authored gloss once
+  // assembled; the full sentence is built from its English meaning —
+  // the child produces it rather than echoing it, the way translation
+  // apps mix listening and translating exercises.
   const target = lesson.build.words;
   for (let n = 2; n <= target.length; n++) {
     const isFull = n === target.length;
     steps.push({
       kind: "BUILD",
       answer: target.slice(0, n),
-      en: isFull ? lesson.build.en : "",
+      en: isFull ? lesson.build.en : (lesson.ladderEn?.[n - 2] ?? ""),
       fromEnglish: isFull,
     });
   }

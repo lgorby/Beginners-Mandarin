@@ -91,6 +91,7 @@ export const esCourse: Course = {
       icon: "estudiante",
       newWords: ["yo", "soy", "estudiante"],
       build: s(["yo", "soy", "estudiante"], "I am a student."),
+      ladderEn: ["I am…"],
       // Pretend play: the child announces themselves as Mom.
       swaps: [s(["yo", "soy", "mamá"], "I am Mom!")],
     },
@@ -108,6 +109,7 @@ export const esCourse: Course = {
       icon: "té",
       newWords: ["bebo", "agua", "té"],
       build: s(["yo", "bebo", "té"], "I drink tea."),
+      ladderEn: ["I drink…"],
       swaps: [s(["yo", "bebo", "agua"], "I drink water.")],
     },
     {
@@ -116,6 +118,7 @@ export const esCourse: Course = {
       icon: "manzanas",
       newWords: ["como", "arroz", "manzanas"],
       build: s(["yo", "como", "arroz"], "I eat rice."),
+      ladderEn: ["I eat…"],
       swaps: [s(["yo", "como", "manzanas"], "I eat apples.")],
     },
     {
@@ -125,6 +128,7 @@ export const esCourse: Course = {
       icon: "quieres",
       newWords: ["quiero", "quieres", "tú"],
       build: s(["yo", "quiero", "té"], "I want tea."),
+      ladderEn: ["I want…"],
       swaps: [
         s(["tú", "quieres", "té"], "Do you want tea?"),
         s(["yo", "quiero", "agua"], "I want water."),
@@ -137,6 +141,7 @@ export const esCourse: Course = {
       icon: "ella",
       newWords: ["él", "ella", "es", "maestro"],
       build: s(["ella", "es", "estudiante"], "She is a student."),
+      ladderEn: ["She is…"],
       swaps: [
         s(["él", "es", "estudiante"], "He is a student."),
         s(["él", "es", "maestro"], "He is a teacher."),
@@ -150,6 +155,7 @@ export const esCourse: Course = {
       // Spanish puts the adjective after the noun — the ladder teaches
       // that order by building it.
       build: s(["un", "gato", "grande"], "a big cat"),
+      ladderEn: ["a cat…"],
       swaps: [
         s(["un", "gato", "pequeño"], "a small cat"),
         s(["un", "perro", "pequeño"], "a small dog"),
@@ -162,6 +168,7 @@ export const esCourse: Course = {
       icon: "no",
       newWords: ["no"],
       build: s(["yo", "no", "como", "arroz"], "I don't eat rice."),
+      ladderEn: ["I don't…", "I don't eat…"],
       swaps: [
         s(["yo", "no", "bebo", "té"], "I don't drink tea."),
         s(["yo", "no", "quiero", "agua"], "I don't want water."),
@@ -173,6 +180,7 @@ export const esCourse: Course = {
       icon: "a la escuela",
       newWords: ["voy", "a la escuela", "a casa"],
       build: s(["yo", "voy", "a la escuela"], "I go to school."),
+      ladderEn: ["I go…"],
       swaps: [
         s(["yo", "voy", "a casa"], "I go home."),
         s(["yo", "no", "voy", "a la escuela"], "I don't go to school."),

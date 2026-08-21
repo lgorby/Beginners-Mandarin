@@ -116,6 +116,19 @@ describe("LESSONS", () => {
     }
   });
 
+  // The 🎉 reveal after a partial build reads from ladderEn — a missing
+  // gloss would leave "yo soy" assembled and unexplained.
+  it("glosses every ladder prefix of a longer build sentence", () => {
+    for (const lesson of LESSONS) {
+      expect((lesson.ladderEn ?? []).length, lesson.id).toBe(
+        Math.max(0, lesson.build.words.length - 2)
+      );
+      for (const en of lesson.ladderEn ?? []) {
+        expect(en, lesson.id).not.toBe("");
+      }
+    }
+  });
+
   // Every swap must differ somewhere, or SWAP has no slot to blank.
   // Note it may differ in MORE than one place: lesson 6's 你喝茶吗
   // differs from 你喜欢猫吗 in two positions. buildSteps blanks the

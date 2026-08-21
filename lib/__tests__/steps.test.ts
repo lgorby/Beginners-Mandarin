@@ -106,8 +106,9 @@ describe("buildSteps", () => {
         const isFull = step.answer.length === lesson.build.words.length;
         const label = `${lesson.id}: ${step.answer.join(" ")}`;
         expect(step.fromEnglish, label).toBe(isFull);
-        // A from-English build must actually have an English prompt.
-        if (step.fromEnglish) expect(step.en, label).not.toBe("");
+        // Every build tells its meaning: the full sentence as the
+        // prompt, a prefix as the reveal once assembled.
+        expect(step.en, label).not.toBe("");
       }
     }
   });
