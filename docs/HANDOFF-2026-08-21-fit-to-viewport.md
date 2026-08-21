@@ -233,8 +233,51 @@ replaced. If you want it running again, launch the new
 
 1. Real-device pass on the SAY step mic race (above) — the one thing
    this branch changes that no automated check can reach.
-2. Decide what `/strokes` should do at laptop height: split pane 1 into
-   two, or shrink the stroke cards.
+2. ~~Decide what `/strokes` should do at laptop height~~ — done, see the
+   addendum below.
 3. Decide whether the kid map should paginate rather than scroll on a
    phone.
-4. If the ~6–64px laptop overflows bother you, they are all padding.
+4. ~~If the ~6–64px laptop overflows bother you, they are all padding~~ —
+   done, see the addendum below.
+
+---
+
+## Addendum (2026-08-21, later): the laptop now fits everywhere
+
+Continuation work; steps 2 and 4 above are done.
+
+**`/strokes` — shrink-the-cards, taken further.** The eight stroke
+cards each carried their own 90px HanziWriter *plus two stacked
+buttons* (~180px per row × four rows — that was the whole +436px).
+`components/StrokeExplorer.tsx` (new) replaces them with a
+master–detail pair: compact selectable cards on the left, ONE shared
+panel on the right with the stroke's name + 🔊, a 120px animation of
+the example character, ▶ Animate / ✍️ Trace it, and the "See it in"
+line. Nothing was hidden — every control the old cards had exists in
+the panel. The cards are plain `<button>`s, so the per-card 🔊 moved
+into the panel (a button cannot nest inside a button).
+
+**The padding-level ones:**
+
+- `/lessons/[id]` word grid: `xl:grid-cols-6`, so a six-word lesson is
+  one row on a laptop (rows are what 640px cannot afford).
+- `/tones`: ma-cards `sm:p-4` → `sm:p-3`, lesson `space-y-3` → `space-y-2`.
+- `/mandarin-grown-ups`: hero button row `sm:mt-6` → `sm:mt-4`.
+
+**Results, re-measured** with `scripts/fit-check.mjs` (same method):
+
+| viewport | fits with zero scrolling |
+|---|---|
+| desktop 1920×1080 | **20 / 20** |
+| laptop 1366×640 | **20 / 20** *(was 16)* |
+| phone 390×844 portrait | **13 / 20** |
+| phone 844×390 landscape | **3 / 20** |
+
+The window still scrolls on **0 of 80**. `/strokes` inner scroll on
+phone portrait dropped from +1720px to +374px, phone landscape from
++649px to +195px. Verified visually (headless screenshots at 1366×640
+and 1920×1080): `npm test` 161 passed, `tsc --noEmit` 0 errors, lint
+clean apart from a pre-existing warning in `fit-check.mjs` itself.
+
+Still open from the original list: the real-device mic race (step 1)
+and the kid-map pagination decision (step 3).
