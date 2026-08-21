@@ -63,6 +63,14 @@ export interface CourseLesson {
   newWords: string[];
   /** The sentence the ladder assembles. */
   build: Sentence;
+  /**
+   * English for each ladder prefix of `build` (lengths 2..N-1, in
+   * order), shown when the child assembles it — "yo soy" put together
+   * means "I am…". Authored, not derived: word glosses ("I / me" +
+   * "to be") do not join into English. Required whenever `build` is
+   * longer than two words; a test enforces the exact count.
+   */
+  ladderEn?: string[];
   /** Same shape, one word changed (or one word added, for 吗 and no). */
   swaps: Sentence[];
 }

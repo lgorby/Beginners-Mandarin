@@ -78,6 +78,7 @@ export const zhCourse: Course = {
       icon: "学生",
       newWords: ["是", "学生", "老师"],
       build: s(["我", "是", "学生"], "I am a student."),
+      ladderEn: ["I am…"],
       swaps: [
         s(["我", "是", "老师"], "I am a teacher."),
         s(["你", "是", "老师"], "You are a teacher."),
@@ -89,6 +90,7 @@ export const zhCourse: Course = {
       icon: "猫",
       newWords: ["喜欢", "猫", "狗"],
       build: s(["我", "喜欢", "猫"], "I like cats."),
+      ladderEn: ["I like…"],
       swaps: [
         s(["我", "喜欢", "狗"], "I like dogs."),
         s(["你", "喜欢", "猫"], "You like cats."),
@@ -100,6 +102,7 @@ export const zhCourse: Course = {
       icon: "茶",
       newWords: ["喝", "水", "茶"],
       build: s(["我", "喝", "茶"], "I drink tea."),
+      ladderEn: ["I drink…"],
       swaps: [s(["我", "喝", "水"], "I drink water.")],
     },
     {
@@ -108,6 +111,7 @@ export const zhCourse: Course = {
       icon: "苹果",
       newWords: ["吃", "米饭", "苹果"],
       build: s(["我", "吃", "苹果"], "I eat apples."),
+      ladderEn: ["I eat…"],
       swaps: [s(["我", "吃", "米饭"], "I eat rice.")],
     },
     {
@@ -117,6 +121,7 @@ export const zhCourse: Course = {
       icon: "吗",
       newWords: ["吗"],
       build: s(["你", "喜欢", "猫", "吗"], "Do you like cats?"),
+      ladderEn: ["You like…", "You like cats…"],
       swaps: [
         s(["你", "喝", "茶", "吗"], "Do you drink tea?"),
         s(["你", "是", "学生", "吗"], "Are you a student?"),
@@ -129,6 +134,7 @@ export const zhCourse: Course = {
       icon: "她",
       newWords: ["他", "她"],
       build: s(["她", "是", "老师"], "She is a teacher."),
+      ladderEn: ["She is…"],
       swaps: [
         s(["他", "喜欢", "狗"], "He likes dogs."),
         s(["他", "吃", "苹果"], "He eats apples."),
@@ -149,6 +155,7 @@ export const zhCourse: Course = {
       icon: "不",
       newWords: ["不"],
       build: s(["我", "不", "喜欢", "猫"], "I don't like cats."),
+      ladderEn: ["I don't…", "I don't like…"],
       swaps: [
         s(["他", "不", "是", "老师"], "He is not a teacher."),
         s(["我", "不", "吃", "苹果"], "I don't eat apples."),
@@ -160,6 +167,7 @@ export const zhCourse: Course = {
       icon: "学校",
       newWords: ["去", "学校", "家"],
       build: s(["我", "去", "学校"], "I go to school."),
+      ladderEn: ["I go…"],
       swaps: [
         s(["他", "去", "学校"], "He goes to school."),
         s(["我", "不", "去", "学校"], "I don't go to school."),

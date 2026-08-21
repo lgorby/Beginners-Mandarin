@@ -28,13 +28,17 @@ export default function BuildStep({
   const tray = scramble(step.answer);
   const question = step.en.endsWith("?");
 
-  // Say the sentence the child is meant to build — without hearing it,
-  // "put them in order" is a guessing game, not listening comprehension.
-  // The 900ms delay lets the English instruction finish first.
+  // A by-ear build says the sentence the child is meant to assemble —
+  // without hearing it, "put them in order" is a guessing game, not
+  // listening comprehension. The 900ms delay lets the English
+  // instruction finish first. A from-English build stays silent: the
+  // meaning is the cue (spokenCue below), and hearing the target
+  // sentence would hand over the answer.
   useEffect(() => {
+    if (step.fromEnglish) return;
     const t = setTimeout(() => speakSentence(step.answer, { question }), 900);
     return () => clearTimeout(t);
-  }, [step.answer, question]);
+  }, [step.answer, step.fromEnglish, question]);
 
   const solved = placed.length === step.answer.length;
   const usedCount = (word: string) => placed.filter((p) => p === word).length;
@@ -58,15 +62,25 @@ export default function BuildStep({
       canContinue={solved}
       onBack={onBack}
       onContinue={() => onDone({ correct: !missed, spoken: false })}
+      // From-English: the meaning is the cue, exactly like SWAP.
+      spokenCue={step.fromEnglish ? step.en : undefined}
     >
-      <button
-        type="button"
-        onClick={() => speakSentence(step.answer, { question })}
-        className="shrink-0 rounded-full bg-red-50 px-4 py-2 text-2xl sm:px-6 sm:py-3 sm:text-3xl dark:bg-red-950"
-        aria-label="Hear the sentence again"
-      >
-        🔊
-      </button>
+      {step.fromEnglish ? (
+        // The cue in print, for readers — hidden once the solved
+        // celebration line shows it in green below.
+        !solved && (
+          <p className="text-base text-zinc-500 sm:text-xl">{step.en}</p>
+        )
+      ) : (
+        <button
+          type="button"
+          onClick={() => speakSentence(step.answer, { question })}
+          className="shrink-0 rounded-full bg-red-50 px-4 py-2 text-2xl sm:px-6 sm:py-3 sm:text-3xl dark:bg-red-950"
+          aria-label="Hear the sentence again"
+        >
+          🔊
+        </button>
+      )}
 
       <div className="flex min-h-[clamp(3.5rem,13dvh,8rem)] flex-wrap items-center justify-center gap-1.5 rounded-3xl border-4 border-dashed border-zinc-300 p-2 sm:gap-2 sm:p-3 dark:border-zinc-700">
         {placed.length === 0 ? (
