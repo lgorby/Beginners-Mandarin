@@ -83,6 +83,9 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
 
   const step = steps[index];
   const progress = Math.round((index / steps.length) * 100);
+  // Going back never rewinds results: cleanMatches/allSpoken keep what
+  // already happened, and stars only ever go up anyway.
+  const onBack = index > 0 ? () => setIndex(index - 1) : undefined;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -104,19 +107,19 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
 
       {/* key={index} resets each step's internal state on advance. */}
       {step.kind === "MEET" && (
-        <MeetStep key={index} step={step} onDone={onDone} />
+        <MeetStep key={index} step={step} onDone={onDone} onBack={onBack} />
       )}
       {step.kind === "MATCH" && (
-        <MatchStep key={index} step={step} onDone={onDone} />
+        <MatchStep key={index} step={step} onDone={onDone} onBack={onBack} />
       )}
       {step.kind === "SAY" && (
-        <SayStep key={index} step={step} onDone={onDone} />
+        <SayStep key={index} step={step} onDone={onDone} onBack={onBack} />
       )}
       {step.kind === "BUILD" && (
-        <BuildStep key={index} step={step} onDone={onDone} />
+        <BuildStep key={index} step={step} onDone={onDone} onBack={onBack} />
       )}
       {step.kind === "SWAP" && (
-        <SwapStep key={index} step={step} onDone={onDone} />
+        <SwapStep key={index} step={step} onDone={onDone} onBack={onBack} />
       )}
     </div>
   );

@@ -62,6 +62,24 @@ How it is built (DRY/SSOT — one engine, N courses):
   `art: { from: "copy", of }` form in `scripts/fetch-pics.mjs`; the rest
   vendor from OpenMoji under Spanish ids. `npm run pics` covers both.
 
+## Arrow keys page everything (2026-08-20)
+
+ArrowRight means Next and ArrowLeft means Previous on every surface that
+pages, through one hook — `lib/useArrowNav.ts` is the SSOT for the key
+behavior (ignores typing in fields and held modifiers, so the dictionary
+search and Alt+Left stay untouched):
+
+- `components/PagerNav.tsx` — the ONLY grown-up Previous/Next row
+  (button- or link-driven). Used by `/practice` (replacing its
+  hand-rolled row) and `/lessons/[id]`, which also gained the missing
+  "← Lesson N-1" link.
+- The kid path's `StepShell` keeps its own child-sized chrome but binds
+  the same hook: a ← button now sits left of Next (disabled on a
+  lesson's first step), and `LessonRunner` passes `onBack` through the
+  step components. Going back never rewinds results — stars only go up.
+- `/tones` binds ArrowRight to "Next word" only; the quiz draws at
+  random, so a Previous cannot exist there.
+
 ## What exists now
 
 The app has two ways in, from a front door at `/`:

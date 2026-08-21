@@ -4,6 +4,7 @@ import { useState } from "react";
 import GentleTonesToggle from "@/components/GentleTonesToggle";
 import MicCheck from "@/components/MicCheck";
 import MicPractice from "@/components/MicPractice";
+import PagerNav from "@/components/PagerNav";
 import { LESSONS } from "@/lib/lessons";
 import { toDiacritics } from "@/lib/pinyin";
 import { VOCAB } from "@/lib/vocab";
@@ -68,25 +69,13 @@ export default function PracticePage() {
         en={item.en}
       />
 
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setIndex((i) => (i - 1 + items.length) % items.length)}
-          className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-        >
-          ← Previous
-        </button>
-        <span className="text-sm text-zinc-400">
-          {(index % items.length) + 1} / {items.length}
-        </span>
-        <button
-          type="button"
-          onClick={() => setIndex((i) => (i + 1) % items.length)}
-          className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
-        >
-          Next →
-        </button>
-      </div>
+      <PagerNav
+        prev={{
+          onClick: () => setIndex((i) => (i - 1 + items.length) % items.length),
+        }}
+        next={{ onClick: () => setIndex((i) => (i + 1) % items.length) }}
+        center={`${(index % items.length) + 1} / ${items.length}`}
+      />
 
       <p className="text-xs text-zinc-400">
         Tip: if your score is low, play 🐢 slow mode and copy the tone shape —

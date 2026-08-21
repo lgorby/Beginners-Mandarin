@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLesson, LESSONS, lessonWords } from "@/lib/lessons";
+import PagerNav from "@/components/PagerNav";
 import WordCard from "@/components/WordCard";
 import GentleTonesToggle from "@/components/GentleTonesToggle";
 import MicPractice from "@/components/MicPractice";
@@ -18,6 +19,7 @@ export default async function LessonPage({
   const lesson = getLesson(id);
   if (!lesson) notFound();
   const words = lessonWords(lesson);
+  const prev = LESSONS.find((l) => l.number === lesson.number - 1);
   const next = LESSONS.find((l) => l.number === lesson.number + 1);
 
   return (
@@ -95,25 +97,28 @@ export default async function LessonPage({
         </div>
       </section>
 
-      <div className="flex items-center justify-between border-t border-zinc-200 pt-6 dark:border-zinc-800">
-        <Link href="/lessons" className="text-sm text-zinc-500 hover:underline">
-          ← All lessons
-        </Link>
-        {next ? (
-          <Link
-            href={`/lessons/${next.id}`}
-            className="rounded-full bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700"
-          >
-            Lesson {next.number}: {next.title} →
-          </Link>
-        ) : (
-          <Link
-            href="/flashcards"
-            className="rounded-full bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700"
-          >
-            🎉 Review everything →
-          </Link>
-        )}
+      <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+        <PagerNav
+          prev={
+            prev && {
+              href: `/lessons/${prev.id}`,
+              label: `Lesson ${prev.number}`,
+            }
+          }
+          next={
+            next
+              ? {
+                  href: `/lessons/${next.id}`,
+                  label: `Lesson ${next.number}: ${next.title}`,
+                }
+              : { href: "/flashcards", label: "🎉 Review everything" }
+          }
+          center={
+            <Link href="/lessons" className="hover:underline">
+              All lessons
+            </Link>
+          }
+        />
       </div>
     </div>
   );
