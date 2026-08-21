@@ -10,6 +10,7 @@ import {
   stopSpeaking,
 } from "@/lib/speech";
 import { useClientValue } from "@/lib/useClientValue";
+import { useRetryKey } from "@/lib/useArrowNav";
 import type { SyllableMark } from "@/lib/pronounce";
 import PinyinText from "./PinyinText";
 import SyllableReport from "./SyllableReport";
@@ -20,6 +21,12 @@ interface Props {
   target: string;
   pinyin: string;
   en: string;
+  /**
+   * Bind Space/Enter to "Say it!". The binding is global, so only the
+   * page's SOLE MicPractice may set this — the lesson pages render two
+   * cards and must leave it off, or one keypress would open both mics.
+   */
+  retryKey?: boolean;
 }
 
 // Plain-language explanations for every Web Speech recognition error code.
@@ -45,7 +52,12 @@ const REC_ERRORS: Record<string, string> = {
  *  2. "Record & Compare" — record your voice and play it back next to the
  *     native audio (works in any browser, offline).
  */
-export default function MicPractice({ target, pinyin, en }: Props) {
+export default function MicPractice({
+  target,
+  pinyin,
+  en,
+  retryKey = false,
+}: Props) {
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
@@ -160,6 +172,9 @@ export default function MicPractice({ target, pinyin, en }: Props) {
       setListening(false);
     }
   };
+
+  // Space/Enter = Say it! / try again, where this is the page's only mic.
+  useRetryKey(retryKey && supported && !listening ? start : undefined);
 
   const startRecording = async () => {
     setRecError(null);

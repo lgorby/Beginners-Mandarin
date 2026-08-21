@@ -13,6 +13,7 @@ import {
 } from "@/lib/speech";
 import { languageOf, sentenceText, speakSentence } from "@/lib/kidSpeech";
 import { useClientValue } from "@/lib/useClientValue";
+import { useRetryKey } from "@/lib/useArrowNav";
 import type { Step } from "@/lib/steps";
 import type { SyllableMark } from "@/lib/pronounce";
 import SyllableReport from "../../SyllableReport";
@@ -144,6 +145,11 @@ export default function SayStep({
       setListening(false);
     }
   }, [target, language.recognitionLang, isMandarin]);
+
+  // Space/Enter = say it (again): the same action as tapping 🎤, so a
+  // "try again" never needs the mouse. Unbound while already listening
+  // or when this browser cannot score speech at all.
+  useRetryKey(supported && !listening ? listen : undefined);
 
   // Speak the word, then open the mic hands-free: hear it, echo it — no
   // button on the first go. Waits for the TTS to actually finish, opens

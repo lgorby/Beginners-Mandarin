@@ -83,6 +83,13 @@ search and Alt+Left stay untouched):
   step components. Going back never rewinds results — stars only go up.
 - `/tones` binds ArrowRight to "Next word" only; the quiz draws at
   random, so a Previous cannot exist there.
+- **Space/Enter = say it / try again** on microphone surfaces, via
+  `useRetryKey` in the same file: the kid SAY step always, and
+  `/practice`'s single MicPractice card via its `retryKey` prop. The
+  grown-up lesson pages render two mic cards and deliberately leave the
+  key unbound — one press must never open two mics. A focused button
+  still activates natively; the global handler skips those presses so
+  one key never fires twice.
 
 ## What exists now
 

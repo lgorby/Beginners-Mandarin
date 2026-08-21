@@ -67,6 +67,7 @@ export default function PracticePage() {
         target={item.zh}
         pinyin={item.pinyin}
         en={item.en}
+        retryKey
       />
 
       <PagerNav
