@@ -4,6 +4,7 @@ import { useState } from "react";
 import { speak } from "@/lib/speech";
 import { LANGUAGES } from "@/lib/languages";
 import { useArrowNav } from "@/lib/useArrowNav";
+import { bare, QUIZ, wordOf, type StressWord } from "@/lib/spanishStress";
 
 // Accents & spelling: the three stress rules that govern every Spanish
 // word, the accent marks that tell two words apart, and ¿ ¡ — then a
@@ -51,26 +52,8 @@ const PAIRS = [
   { a: "está", aEn: "he/she is", b: "esta", bEn: "this" },
 ];
 
-// Quiz pool: each word split into syllables, with the stressed index.
-const QUIZ: { syllables: string[]; stress: number }[] = [
-  { syllables: ["ca", "sa"], stress: 0 },
-  { syllables: ["co", "mer"], stress: 1 },
-  { syllables: ["es", "cue", "la"], stress: 1 },
-  { syllables: ["te", "lé", "fo", "no"], stress: 1 },
-  { syllables: ["co", "ra", "zón"], stress: 2 },
-  { syllables: ["mú", "si", "ca"], stress: 0 },
-  { syllables: ["ven", "ta", "na"], stress: 1 },
-  { syllables: ["fá", "cil"], stress: 0 },
-  { syllables: ["ciu", "dad"], stress: 1 },
-  { syllables: ["pa", "pá"], stress: 1 },
-  { syllables: ["ár", "bol"], stress: 0 },
-  { syllables: ["fe", "liz"], stress: 1 },
-];
-
-const wordOf = (q: { syllables: string[] }) => q.syllables.join("");
-
 export default function SpellingPage() {
-  const [quiz, setQuiz] = useState<(typeof QUIZ)[number] | null>(null);
+  const [quiz, setQuiz] = useState<StressWord | null>(null);
   const [guess, setGuess] = useState<number | null>(null);
   const [streak, setStreak] = useState(0);
 
@@ -236,7 +219,7 @@ export default function SpellingPage() {
                     }`}
                     lang="es-MX"
                   >
-                    {syl}
+                    {bare(syl)}
                   </button>
                 );
               })}
