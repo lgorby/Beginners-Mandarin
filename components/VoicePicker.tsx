@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LANGUAGES } from "@/lib/languages";
 import {
   getMandarinVoices,
   getPreferredVoiceName,
@@ -8,33 +9,68 @@ import {
   onVoicesReady,
   setPreferredVoiceName,
   speak,
+  voicesFor,
 } from "@/lib/speech";
 
-const SAMPLE = "你好！我是你的中文老师。";
+/** Everything about the picker that differs per language. */
+const CONFIG = {
+  zh: {
+    sample: "你好！我是你的中文老师。",
+    speechLang: undefined as string | undefined, // speak() defaults to zh-CN
+    getVoices: getMandarinVoices,
+    selectedClass: "bg-red-600 text-white",
+    selectedMetaClass: "text-red-100",
+    missing:
+      "No Mandarin voices found on this system. Install one in Windows Settings → Time & Language → Language → add Chinese (Simplified) with Speech, then restart the browser.",
+    noMale:
+      " No male voice found — add Chinese (Simplified) speech in Windows Settings → Time & Language → Language to get Microsoft Kangkang (male), or open the app in Microsoft Edge which bundles many extra voices.",
+  },
+  es: {
+    sample: "¡Hola! Vamos a aprender español.",
+    speechLang: LANGUAGES.es.speechLang as string | undefined,
+    getVoices: () =>
+      voicesFor(
+        LANGUAGES.es.speechLang,
+        LANGUAGES.es.preferredVoices,
+        LANGUAGES.es.wrongVarietyVoices
+      ),
+    selectedClass: "bg-emerald-600 text-white",
+    selectedMetaClass: "text-emerald-100",
+    missing:
+      "No Spanish voices found on this system. Install one in Windows Settings → Time & Language → Language → add Spanish (Mexico) with Speech, then restart the browser.",
+    noMale:
+      " No male voice found — add Spanish (Mexico) speech in Windows Settings → Time & Language → Language to get Microsoft Raul (male), or open the app in Microsoft Edge which bundles many extra voices.",
+  },
+};
 
 /**
  * Floating voice chooser (bottom-right on every page). Lists the system's
- * Mandarin voices with a male/female label, previews each, and persists the
- * choice — all app audio then uses it.
+ * voices for one language with a male/female label, previews each, and
+ * persists the choice — all app audio in that language then uses it.
  */
-export default function VoicePicker() {
+export default function VoicePicker({
+  lang = "zh",
+}: {
+  lang?: keyof typeof CONFIG;
+}) {
+  const cfg = CONFIG[lang];
   const [open, setOpen] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
     const load = () => {
-      setVoices(getMandarinVoices());
-      setSelected(getPreferredVoiceName());
+      setVoices(cfg.getVoices());
+      setSelected(getPreferredVoiceName(lang));
     };
     load();
     onVoicesReady(load);
-  }, []);
+  }, [lang, cfg]);
 
   const choose = (name: string) => {
     setSelected(name);
-    setPreferredVoiceName(name);
-    speak(SAMPLE, { voiceName: name });
+    setPreferredVoiceName(name, lang);
+    speak(cfg.sample, { voiceName: name, lang: cfg.speechLang });
   };
 
   const current = voices.find((v) => v.name === selected) ?? voices[0];
@@ -57,11 +93,7 @@ export default function VoicePicker() {
             </button>
           </div>
           {voices.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              No Mandarin voices found on this system. Install one in Windows
-              Settings → Time &amp; Language → Language → add Chinese
-              (Simplified) with Speech, then restart the browser.
-            </p>
+            <p className="text-sm text-zinc-500">{cfg.missing}</p>
           ) : (
             <>
               <ul className="max-h-64 space-y-1 overflow-y-auto">
@@ -75,7 +107,7 @@ export default function VoicePicker() {
                         onClick={() => choose(v.name)}
                         className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
                           isSel
-                            ? "bg-red-600 text-white"
+                            ? cfg.selectedClass
                             : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         }`}
                       >
@@ -84,7 +116,7 @@ export default function VoicePicker() {
                         </span>
                         {v.name.replace(/^Microsoft |^Google /, "")}
                         <span
-                          className={`ml-1 text-xs ${isSel ? "text-red-100" : "text-zinc-400"}`}
+                          className={`ml-1 text-xs ${isSel ? cfg.selectedMetaClass : "text-zinc-400"}`}
                         >
                           {gender ?? ""} {v.lang}
                         </span>
@@ -94,10 +126,9 @@ export default function VoicePicker() {
                 })}
               </ul>
               <p className="mt-2 text-xs text-zinc-400">
-                Tap a voice to hear a sample. Your choice is used for all audio
-                in the app.
-                {!hasMale &&
-                  " No male voice found — add Chinese (Simplified) speech in Windows Settings → Time & Language → Language to get Microsoft Kangkang (male), or open the app in Microsoft Edge which bundles many extra voices."}
+                Tap a voice to hear a sample. Your choice is used for all app
+                audio in this language.
+                {!hasMale && cfg.noMale}
               </p>
             </>
           )}

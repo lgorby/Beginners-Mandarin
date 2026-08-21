@@ -36,10 +36,12 @@ intonation makes anything an offer), *él/ella + es*, and *no*.
 The front door itself follows the same rule: the child's card is large and
 shows their star total, the grown-up card is a quieter one below it.
 
-## 🧑 The grown-up section (`/grown-ups`)
+## 🧑 The grown-up section (`/mandarin-grown-ups`)
 
 The full toolkit — Mandarin only, since tones, CC-CEDICT, and stroke order
-have no Spanish equivalent:
+have no Spanish equivalent. `/spanish-grown-ups` has its own toolkit:
+sounds trainer, WikDict-powered talking dictionary, microphone speaking
+practice, accents &amp; stress trainer, and flashcards.
 
 - **🎵 Tone trainer** — learn the four tones first (the classic mā/má/mǎ/mà
   demo), then an ear-training quiz. Tones are color-coded everywhere in the app
@@ -99,6 +101,10 @@ port 3210 and opens the app in your default browser. Stop it with
 - `data/cedict_ts.u8` — the raw CC-CEDICT dictionary (CC BY-SA 4.0), parsed
   once per server process by `lib/dictionary.ts` and searched via
   `/api/search?q=...`.
+- `data/wikdict_es_en.tsv` — the Spanish dictionary (~25,000 entries),
+  extracted from [WikDict](https://www.wikdict.com/)'s es-en export
+  (Wiktionary data, CC BY-SA) by `node scripts/build-es-dict.mjs`, parsed by
+  `lib/spanishDictionary.ts` and searched via `/api/search-es?q=...`.
 - `lib/pinyin.ts` — converts numbered pinyin (`ni3 hao3`) to diacritics
   (`nǐ hǎo`) and drives tone coloring.
 - `lib/vocab.ts` / `lib/lessons.ts` — the HSK-1-based curriculum behind the
@@ -135,6 +141,7 @@ port 3210 and opens the app in your default browser. Stop it with
 ## Credits
 
 - Dictionary: [CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cedict) (CC BY-SA 4.0)
+- Spanish dictionary: [WikDict](https://www.wikdict.com/) / Wiktionary (CC BY-SA)
 - Stroke data & quizzes: [Hanzi Writer](https://hanziwriter.org/) (MIT)
 - Pictures: [OpenMoji](https://openmoji.org/) (CC BY-SA 4.0) — vendored into
   `public/pics/` by `npm run pics`. Six pictures are original work.

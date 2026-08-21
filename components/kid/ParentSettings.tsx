@@ -125,7 +125,7 @@ export default function ParentSettings() {
                 </label>
 
                 <Link
-                  href="/grown-ups"
+                  href="/mandarin-grown-ups"
                   className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 text-center font-semibold dark:bg-zinc-800"
                 >
                   Tones, dictionary, writing &amp; more →

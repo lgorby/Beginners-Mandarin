@@ -3,22 +3,30 @@
 import { useState } from "react";
 import { speak } from "@/lib/speech";
 
-/** Plays Mandarin text through the speakers. Long-press-free: two buttons,
- * normal speed and slow speed. */
+/** Plays learner-language text through the speakers — Mandarin unless
+ * `lang` says otherwise. Long-press-free: two buttons, normal speed and
+ * slow speed. */
 export default function SpeakButton({
   text,
   size = "md",
   showSlow = false,
+  lang,
+  voicePrefer,
+  voiceAvoid,
 }: {
   text: string;
   size?: "sm" | "md" | "lg";
   showSlow?: boolean;
+  /** BCP-47 tag; defaults to speak()'s Mandarin. */
+  lang?: string;
+  voicePrefer?: string[];
+  voiceAvoid?: string[];
 }) {
   const [speaking, setSpeaking] = useState(false);
 
   const play = (rate: number) => {
     setSpeaking(true);
-    speak(text, { rate });
+    speak(text, { rate, lang, voicePrefer, voiceAvoid });
     // speechSynthesis has no reliable end event across browsers for our
     // cancel-then-speak pattern; just reset the visual state shortly after.
     setTimeout(() => setSpeaking(false), 600);

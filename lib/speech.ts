@@ -48,9 +48,9 @@ export function rankVoices<T extends { lang: string }>(
  * Voices for a BCP-47 tag, best match first: the requested region, then
  * `prefer` in order, then other same-language regions, with `avoid`
  * varieties last. Unlike the Mandarin list this is not cached — it is
- * only read at speak() time.
+ * read at speak() time (and by the Spanish VoicePicker).
  */
-function voicesFor(
+export function voicesFor(
   lang: string,
   prefer: string[] = [],
   avoid: string[] = []
@@ -68,20 +68,29 @@ function voicesFor(
 
 // --- Voice preference (persisted, used by every speak() call) -----------
 
-const VOICE_KEY = "mandarin-voice-v1";
+// One preference per language, so picking a Spanish voice can never make
+// a Chinese voice read Spanish (or vice versa). The zh key predates the
+// per-language split — renaming it would drop saved choices.
+const VOICE_KEYS: Record<string, string> = {
+  zh: "mandarin-voice-v1",
+  es: "spanish-voice-v1",
+};
 
-export function getPreferredVoiceName(): string | null {
-  if (typeof window === "undefined") return null;
+export function getPreferredVoiceName(langPrefix = "zh"): string | null {
+  const key = VOICE_KEYS[langPrefix];
+  if (!key || typeof window === "undefined") return null;
   try {
-    return localStorage.getItem(VOICE_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-export function setPreferredVoiceName(name: string) {
+export function setPreferredVoiceName(name: string, langPrefix = "zh") {
+  const key = VOICE_KEYS[langPrefix];
+  if (!key) return;
   try {
-    localStorage.setItem(VOICE_KEY, name);
+    localStorage.setItem(key, name);
   } catch {
     // storage unavailable — preference just won't persist
   }
@@ -90,12 +99,23 @@ export function setPreferredVoiceName(name: string) {
 /**
  * Guess a voice's gender from its name. Reliable for Microsoft's Chinese
  * voices (male names start with Yun- or are Kangkang/Danny; female start
- * with Xiao- or are Huihui/Yaoyao/…) and Google's (female).
+ * with Xiao- or are Huihui/Yaoyao/…), Microsoft's Spanish voices (given
+ * names like Raul/Sabina, including the Edge neural set), and Google's
+ * (female).
  */
 export function guessVoiceGender(name: string): "male" | "female" | null {
   const n = name.toLowerCase();
-  if (/(kangkang|danny|wanlung|zhiwei|yun[a-z]+)/.test(n)) return "male";
-  if (/(xiao[a-z]+|huihui|yaoyao|hanhan|tracy|hiugaai|hiumaan|hsiao[a-z]+|google)/.test(n))
+  if (
+    /(kangkang|danny|wanlung|zhiwei|yun[a-z]+|raul|pablo|jorge|alonso|alvaro|álvaro|tomas|tomás|gonzalo|luciano|gerardo|liberto|saul|saúl)/.test(
+      n
+    )
+  )
+    return "male";
+  if (
+    /(xiao[a-z]+|huihui|yaoyao|hanhan|tracy|hiugaai|hiumaan|hsiao[a-z]+|sabina|helena|laura|dalia|paloma|elvira|camila|salome|salomé|elena|ximena|larissa|catalina|sofia|sofía|google)/.test(
+      n
+    )
+  )
     return "female";
   return null;
 }
@@ -144,8 +164,8 @@ export function subscribeVoices(cb: () => void): () => void {
  * Speak learner-language text aloud — Mandarin unless `lang` says
  * otherwise. rate < 1 slows it down for learners. onDone fires when the
  * utterance finishes OR is interrupted — callers must check they still
- * want to act (e.g. the hands-free mic open). The persisted voice
- * preference is a Mandarin voice, so it only applies to zh.
+ * want to act (e.g. the hands-free mic open). Each language's persisted
+ * voice preference (if any) applies only to that language.
  */
 export function speak(
   text: string,
@@ -171,7 +191,7 @@ export function speak(
     ? getMandarinVoices()
     : voicesFor(lang, opts?.voicePrefer, opts?.voiceAvoid);
   const wanted =
-    opts?.voiceName ?? (isMandarin ? getPreferredVoiceName() : null);
+    opts?.voiceName ?? getPreferredVoiceName(normTag(lang).split("-")[0]);
   const chosen =
     (wanted ? voices.find((v) => v.name === wanted) : undefined) ??
     voices[0] ??

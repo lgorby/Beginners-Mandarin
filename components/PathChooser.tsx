@@ -30,6 +30,20 @@ const DOOR_STYLE: Record<LangCode, string> = {
   es: "bg-emerald-600 hover:bg-emerald-700",
 };
 
+// One grown-up door per language, mirroring the kids' doors.
+const GROWN_UP_DOORS = [
+  {
+    href: "/mandarin-grown-ups",
+    title: "For grown-ups · Mandarin",
+    desc: "Tones, dictionary, stroke order, flashcards",
+  },
+  {
+    href: "/spanish-grown-ups",
+    title: "For grown-ups · Spanish",
+    desc: "Lessons and first words with audio — more coming",
+  },
+];
+
 function KidDoor({ code, progress }: { code: LangCode; progress: Progress }) {
   const language = LANGUAGES[code];
   const lessons = lessonsFor(code);
@@ -120,25 +134,27 @@ export default function PathChooser() {
         ))}
       </div>
 
-      {/* The grown-up door — clear, but deliberately quieter. Its toolkit
-          (tones, CC-CEDICT, stroke order) only exists for Mandarin. */}
-      <Link
-        href="/grown-ups"
-        className="flex items-center gap-3 rounded-3xl border-2 border-zinc-200 bg-white p-4 transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900"
-      >
-        <span className="text-3xl" aria-hidden>
-          🧑
-        </span>
-        <span className="flex-1">
-          <span className="block font-bold">For grown-ups · Mandarin</span>
-          <span className="block text-sm text-zinc-500">
-            Tones, dictionary, stroke order, flashcards
+      {/* The grown-up doors — clear, but deliberately quieter. The full
+          toolkit (tones, CC-CEDICT, stroke order) only exists for
+          Mandarin; the Spanish door leads to what exists so far. */}
+      {GROWN_UP_DOORS.map((door) => (
+        <Link
+          key={door.href}
+          href={door.href}
+          className="flex items-center gap-3 rounded-3xl border-2 border-zinc-200 bg-white p-4 transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900"
+        >
+          <span className="text-3xl" aria-hidden>
+            🧑
           </span>
-        </span>
-        <span className="text-xl text-zinc-400" aria-hidden>
-          →
-        </span>
-      </Link>
+          <span className="flex-1">
+            <span className="block font-bold">{door.title}</span>
+            <span className="block text-sm text-zinc-500">{door.desc}</span>
+          </span>
+          <span className="text-xl text-zinc-400" aria-hidden>
+            →
+          </span>
+        </Link>
+      ))}
     </main>
   );
 }

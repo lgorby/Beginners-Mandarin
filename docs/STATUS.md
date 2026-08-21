@@ -100,7 +100,8 @@ The app has two ways in, from a front door at `/`:
 | `/` | Front door — two doors, weighted toward the child |
 | `/learn` | Star path — ten lessons, locked in order |
 | `/learn/[id]` | Lesson runner — one exercise per screen |
-| `/grown-ups` | The original home page |
+| `/mandarin-grown-ups` | The original home page (`/grown-ups` redirects here) |
+| `/spanish-grown-ups` | Grown-up Spanish toolkit — sounds trainer, talking dictionary (WikDict), speaking practice, accents & stress, flashcards |
 | `/mic-test` | Diagnostics: mic level meter, room-noise check, recognition event log |
 | `/api/score` | Pronunciation scoring (pinyin + tones) via CC-CEDICT |
 | `/tones` `/lessons` `/dictionary` `/practice` `/strokes` `/characters` `/flashcards` | Unchanged from before this work |

@@ -9,6 +9,7 @@ import {
   speak,
   stopSpeaking,
 } from "@/lib/speech";
+import { LANGUAGES, type LangCode } from "@/lib/languages";
 import { useClientValue } from "@/lib/useClientValue";
 import { useRetryKey } from "@/lib/useArrowNav";
 import type { SyllableMark } from "@/lib/pronounce";
@@ -17,10 +18,13 @@ import SyllableReport from "./SyllableReport";
 import { useGentleTones } from "./useGentleTones";
 
 interface Props {
-  /** The Mandarin phrase the learner should say */
+  /** The phrase the learner should say, in the target language. */
   target: string;
-  pinyin: string;
+  /** Mandarin only — Spanish is its own pronunciation. */
+  pinyin?: string;
   en: string;
+  /** Which language is being practiced. Mandarin unless said otherwise. */
+  lang?: LangCode;
   /**
    * Bind Space/Enter to "Say it!". The binding is global, so only the
    * page's SOLE MicPractice may set this — the lesson pages render two
@@ -30,25 +34,24 @@ interface Props {
 }
 
 // Plain-language explanations for every Web Speech recognition error code.
-const REC_ERRORS: Record<string, string> = {
+const recErrors = (langName: string): Record<string, string> => ({
   "not-allowed":
     "Microphone access is blocked. Click the 🔒/🎤 icon in the address bar, allow the microphone, and reload.",
   "service-not-allowed":
-    "This browser blocked its speech service. Try Google Chrome — its Mandarin recognizer is the most reliable.",
-  "language-not-supported":
-    "This browser's speech recognizer doesn't support Mandarin. Use Google Chrome for scored practice — or use Record & Compare below, which works everywhere.",
+    "This browser blocked its speech service. Try Google Chrome — its speech recognizer is the most reliable.",
+  "language-not-supported": `This browser's speech recognizer doesn't support ${langName}. Use Google Chrome for scored practice — or use Record & Compare below, which works everywhere.`,
   network:
     "The speech recognizer needs an internet connection (it runs in the cloud). Check your connection — or use Record & Compare below, which works offline.",
   "audio-capture":
     "No microphone was found. Check it's plugged in and enabled in Windows Settings → Privacy & security → Microphone.",
   "no-speech": "Didn't hear anything — try again and speak a bit louder.",
   aborted: "Listening was cancelled.",
-};
+});
 
 /**
  * Microphone pronunciation practice, two ways:
- *  1. "Say it!" — the browser's zh-CN speech recognizer scores your attempt
- *     (Chrome/Edge, needs internet).
+ *  1. "Say it!" — the browser's speech recognizer for the target language
+ *     scores your attempt (Chrome/Edge, needs internet).
  *  2. "Record & Compare" — record your voice and play it back next to the
  *     native audio (works in any browser, offline).
  */
@@ -56,8 +59,20 @@ export default function MicPractice({
   target,
   pinyin,
   en,
+  lang = "zh",
   retryKey = false,
 }: Props) {
+  const language = LANGUAGES[lang];
+  const isMandarin = lang === "zh";
+  // speak() defaults to Mandarin; other languages carry their own tags.
+  const speakOpts = isMandarin
+    ? {}
+    : {
+        lang: language.speechLang,
+        voicePrefer: language.preferredVoices,
+        voiceAvoid: language.wrongVarietyVoices,
+      };
+  const REC_ERRORS = recErrors(language.name);
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
@@ -103,7 +118,7 @@ export default function MicPractice({
     // start() is accepted but no events ever fire. Abort any previous
     // session first.
     recRef.current?.abort();
-    const rec = getRecognizer();
+    const rec = getRecognizer(language.recognitionLang);
     if (!rec) return;
     recRef.current = rec;
     // Never listen while the speakers are playing the target phrase.
@@ -122,7 +137,8 @@ export default function MicPractice({
         if (p === "mic") ding(); // the mic is truly open — speak now
       },
       settle: async (best) => {
-        if (best.candidates.length > 0) {
+        // Sound-level rescoring is a pinyin service — Mandarin only.
+        if (isMandarin && best.candidates.length > 0) {
           // Rescore by sound (pinyin + tones): a homophone transcript of
           // a correct pronunciation must not read as failure. Also
           // fetches the per-syllable report.
@@ -223,28 +239,28 @@ export default function MicPractice({
         : gentle && toneHint
           ? { emoji: "🎉", msg: "All the right sounds! (Gentle mode — tones not required. Listen again to copy the melody.)", color: "text-green-600 dark:text-green-400" }
           : score >= 60
-            ? { emoji: "👍", msg: "Close! Most of it came through — listen again and watch the tones.", color: "text-amber-600 dark:text-amber-400" }
+            ? { emoji: "👍", msg: isMandarin ? "Close! Most of it came through — listen again and watch the tones." : "Close! Most of it came through — listen again and copy the rhythm.", color: "text-amber-600 dark:text-amber-400" }
             : { emoji: "🔁", msg: "Not quite — listen to the slow version and try again.", color: "text-red-600 dark:text-red-400" };
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-1 text-3xl font-semibold" lang="zh-CN">
+      <div className="mb-1 text-3xl font-semibold" lang={language.speechLang}>
         {target}
       </div>
-      <PinyinText pinyin={pinyin} className="text-lg" />
+      {pinyin && <PinyinText pinyin={pinyin} className="text-lg" />}
       <div className="mb-4 text-sm text-zinc-500">{en}</div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={() => speak(target, { rate: 0.85 })}
+          onClick={() => speak(target, { rate: 0.85, ...speakOpts })}
           className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
         >
           🔊 Listen
         </button>
         <button
           type="button"
-          onClick={() => speak(target, { rate: 0.5 })}
+          onClick={() => speak(target, { rate: 0.5, ...speakOpts })}
           className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
         >
           🐢 Slow
@@ -267,8 +283,9 @@ export default function MicPractice({
 
       {!supported && (
         <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
-          Scored practice needs Google Chrome (this browser has no Mandarin
-          speech recognizer) — but Record &amp; Compare below works here.
+          Scored practice needs Google Chrome (this browser has no{" "}
+          {language.name} speech recognizer) — but Record &amp; Compare below
+          works here.
         </p>
       )}
 
@@ -281,7 +298,7 @@ export default function MicPractice({
           </div>
           <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
             We heard:{" "}
-            <span className="text-lg" lang="zh-CN">
+            <span className="text-lg" lang={language.speechLang}>
               {heard || "(nothing)"}
             </span>
           </div>
@@ -321,7 +338,7 @@ export default function MicPractice({
               <audio src={clipUrl} controls className="h-9 max-w-52" />
               <button
                 type="button"
-                onClick={() => speak(target, { rate: 0.85 })}
+                onClick={() => speak(target, { rate: 0.85, ...speakOpts })}
                 className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
               >
                 🔊 Native again
@@ -332,8 +349,9 @@ export default function MicPractice({
         {recError && <p className="mt-2 text-sm text-red-600">{recError}</p>}
         {clipUrl && !recording && (
           <p className="mt-2 text-xs text-zinc-400">
-            Play your voice, then the native audio — do the tones rise and fall
-            the same way?
+            {isMandarin
+              ? "Play your voice, then the native audio — do the tones rise and fall the same way?"
+              : "Play your voice, then the native audio — does your rhythm match, vowels short and pure?"}
           </p>
         )}
       </div>

@@ -3,16 +3,17 @@
 // Spaced repetition (Leitner boxes) for the grown-up flashcards.
 //
 // The pure functions take `now` and the word list as arguments so they
-// are testable; the session store at the bottom binds them to VOCAB,
-// localStorage, and the clock, shaped for useSyncExternalStore so the
-// page never calls setState inside an effect.
+// are testable; the session factory at the bottom binds them to a word
+// list, a localStorage key, and the clock, shaped for
+// useSyncExternalStore so a page never calls setState inside an effect.
+// One session per language — each deck has its own key and progress.
 
 import { createClientStore } from "./clientStore";
+import { WORDS } from "./curriculum";
 import { VOCAB } from "./vocab";
 
 /** Box 0 = new/again; higher boxes are reviewed at longer intervals. */
 export const INTERVALS_DAYS = [0, 1, 3, 7, 16, 35];
-const STORAGE_KEY = "mandarin-srs-v1";
 /** Cap per session, so a review stays short. */
 const SESSION_CAP = 20;
 
@@ -69,7 +70,7 @@ export function learnedCount(store: SrsStore): number {
   return Object.values(store).filter((c) => c.box >= 2).length;
 }
 
-// --- The session store (client only) ------------------------------------
+// --- The session stores (client only) -----------------------------------
 
 export interface SrsSession {
   /** False only for the server/hydration render. */
@@ -78,53 +79,78 @@ export interface SrsSession {
   queue: string[];
 }
 
-function loadStore(): SrsStore {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as SrsStore;
-  } catch {
-    return {};
-  }
+export interface SrsSessionApi {
+  subscribe: (cb: () => void) => () => void;
+  getSnapshot: () => SrsSession;
+  getServerSnapshot: () => SrsSession;
+  /** Grade the card at the head of the queue, persist, and advance. */
+  rateCurrent: (grade: Grade) => void;
 }
 
-function saveStore(s: SrsStore): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  } catch {
-    // review still works this session; it just won't persist
-  }
-}
+function createSrsSession(storageKey: string, words: string[]): SrsSessionApi {
+  const loadStore = (): SrsStore => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) ?? "{}") as SrsStore;
+    } catch {
+      return {};
+    }
+  };
 
-function readSession(): SrsSession {
-  const store = loadStore();
+  const saveStore = (s: SrsStore): void => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(s));
+    } catch {
+      // review still works this session; it just won't persist
+    }
+  };
+
+  const readSession = (): SrsSession => {
+    const store = loadStore();
+    return { ready: true, store, queue: dueQueue(store, words, Date.now()) };
+  };
+
+  const session = createClientStore<SrsSession>(readSession, {
+    ready: false,
+    store: {},
+    queue: [],
+  });
+
   return {
-    ready: true,
-    store,
-    queue: dueQueue(store, VOCAB.map((w) => w.zh), Date.now()),
+    subscribe: session.subscribe,
+    getSnapshot: session.getSnapshot,
+    getServerSnapshot: session.getServerSnapshot,
+    rateCurrent(grade) {
+      const s = session.getSnapshot();
+      const word = s.queue[0];
+      if (!word) return;
+      const store = rateCard(s.store, word, grade, Date.now());
+      saveStore(store);
+      const rest = s.queue.slice(1);
+      // "Again" cards return to the end of today's queue.
+      session.set({
+        ready: true,
+        store,
+        queue: grade === "again" ? [...rest, word] : rest,
+      });
+    },
   };
 }
 
-const session = createClientStore<SrsSession>(readSession, {
-  ready: false,
-  store: {},
-  queue: [],
-});
+const mandarinSrs = createSrsSession(
+  "mandarin-srs-v1",
+  VOCAB.map((w) => w.zh)
+);
 
-export const subscribeSrsSession = session.subscribe;
-export const getSrsSessionSnapshot = session.getSnapshot;
-export const getSrsSessionServerSnapshot = session.getServerSnapshot;
+export const spanishSrs = createSrsSession(
+  "spanish-srs-v1",
+  // The Spanish course's words, in the order the lessons teach them.
+  Object.values(WORDS)
+    .filter((w) => w.lang === "es")
+    .map((w) => w.text)
+);
 
-/** Grade the card at the head of the queue, persist, and advance. */
-export function rateCurrentCard(grade: Grade): void {
-  const s = session.getSnapshot();
-  const zh = s.queue[0];
-  if (!zh) return;
-  const store = rateCard(s.store, zh, grade, Date.now());
-  saveStore(store);
-  const rest = s.queue.slice(1);
-  // "Again" cards return to the end of today's queue.
-  session.set({
-    ready: true,
-    store,
-    queue: grade === "again" ? [...rest, zh] : rest,
-  });
-}
+// The Mandarin flashcards page predates the factory; its names stay.
+export const subscribeSrsSession = mandarinSrs.subscribe;
+export const getSrsSessionSnapshot = mandarinSrs.getSnapshot;
+export const getSrsSessionServerSnapshot = mandarinSrs.getServerSnapshot;
+export const rateCurrentCard = mandarinSrs.rateCurrent;
