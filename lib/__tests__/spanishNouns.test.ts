@@ -31,6 +31,27 @@ describe("articleFor", () => {
     expect(articleFor("poeta", "nmf")).toBe("el/la");
   });
 
+  it("keeps el/la for common-gender nouns ending in -nte", () => {
+    // "el cliente" and "la cliente" are both standard Spanish — these
+    // -nte nouns are invariable just like the -a ones above.
+    expect(articleFor("cliente", "nmf")).toBe("el/la");
+    expect(articleFor("cantante", "nmf")).toBe("el/la");
+    expect(articleFor("gerente", "nmf")).toBe("el/la");
+  });
+
+  it("keeps el/la for common-gender nouns ending in -ense", () => {
+    // Nationality/origin adjectives-turned-nouns in -ense don't change
+    // for gender either: el nicaragüense, la nicaragüense.
+    expect(articleFor("nicaragüense", "nmf")).toBe("el/la");
+  });
+
+  it("treats elefante and infante as masculine despite ending in -nte", () => {
+    // These two form their feminine by changing the word (la elefanta,
+    // la infanta), so unlike cliente/cantante they are not common-gender.
+    expect(articleFor("elefante", "nmf")).toBe("el");
+    expect(articleFor("infante", "nmf")).toBe("el");
+  });
+
   it("gives non-nouns no article at all", () => {
     expect(articleFor("hola", "interj")).toBeUndefined();
     expect(articleFor("comer", "v")).toBeUndefined();
@@ -48,6 +69,13 @@ describe("spokenForm", () => {
   it("speaks a common-gender noun bare", () => {
     // "el/la" is a written shorthand — read aloud it is nonsense.
     expect(spokenForm("activista", "nmf")).toBe("activista");
+    expect(spokenForm("cliente", "nmf")).toBe("cliente");
+  });
+
+  it("speaks elefante and infante with their masculine article", () => {
+    // Not common-gender, so unlike "cliente" these keep a spoken article.
+    expect(spokenForm("elefante", "nmf")).toBe("el elefante");
+    expect(spokenForm("infante", "nmf")).toBe("el infante");
   });
 
   it("speaks a non-noun exactly as written", () => {
@@ -59,6 +87,12 @@ describe("posLabel", () => {
   it("labels an nmf headword by what it actually is", () => {
     expect(posLabel("perro", "nmf")).toBe("noun (m.)");
     expect(posLabel("activista", "nmf")).toBe("noun (m./f.)");
+    expect(posLabel("cliente", "nmf")).toBe("noun (m./f.)");
+    expect(posLabel("cantante", "nmf")).toBe("noun (m./f.)");
+    // elefante/infante end in -nte but aren't common-gender — the label
+    // must agree with the "el elefante" article, not the -nte pattern.
+    expect(posLabel("elefante", "nmf")).toBe("noun (m.)");
+    expect(posLabel("infante", "nmf")).toBe("noun (m.)");
   });
 
   it("labels the other tags from the fixed table", () => {

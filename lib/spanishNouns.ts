@@ -31,13 +31,16 @@ const POS_LABEL: Record<string, string> = {
 
 /**
  * WikDict's nmf tag covers two different things, and only one of them is
- * common-gender. "activista" and "gimnasta" really do take either article
- * on the same spelling; "perro", "actor" and "abuelo" are masculine
- * headwords whose feminine is a different word (perra, actriz, abuela).
- * The invariable ones all end in -a, which is what this tests — 43 of the
- * 460 nmf entries. The other 417 were being shown as "el/la perro".
+ * common-gender. "activista", "cliente" and "nicaragüense" really do take
+ * either article on the same spelling; "perro", "actor" and "abuelo" are
+ * masculine headwords whose feminine is a different word (perra, actriz,
+ * abuela). The invariable ones end in -a, -nte or -ense — but "elefante"
+ * and "infante" are exceptions to the -nte pattern: their feminine changes
+ * the word (la elefanta, la infanta), so they stay masculine like "perro".
  */
-const isCommonGender = (word: string) => /a$/.test(word);
+const INVARIABLE_MASCULINE = new Set(["elefante", "infante"]);
+const isCommonGender = (word: string) =>
+  !INVARIABLE_MASCULINE.has(word) && /(a|nte|ense)$/.test(word);
 
 /** The article to show beside a headword, or undefined for non-nouns. */
 export function articleFor(word: string, pos: string): string | undefined {
