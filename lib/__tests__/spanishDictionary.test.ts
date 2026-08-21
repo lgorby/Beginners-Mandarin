@@ -45,4 +45,17 @@ describe("searchSpanish", () => {
   it("respects the result limit", () => {
     expect(searchSpanish("a", 5).length).toBeLessThanOrEqual(5);
   });
+
+  it("leaves no stray carriage return on the last translation", () => {
+    // Windows checks the TSV out with CRLF (core.autocrlf), and the last
+    // tab-separated field on each line is the translation list. Splitting
+    // on "\n" alone left a \r glued to every entry's final translation,
+    // which silently cost exact-match entries their top score tier and
+    // printed a control character in the UI.
+    for (const r of searchSpanish("water", 10)) {
+      for (const t of r.translations) {
+        expect(t).toBe(t.trim());
+      }
+    }
+  });
 });

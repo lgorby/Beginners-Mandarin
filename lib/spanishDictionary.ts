@@ -41,7 +41,10 @@ function load(): LoadedEntry[] {
   const file = path.join(process.cwd(), "data", "wikdict_es_en.tsv");
   const text = fs.readFileSync(file, "utf8");
   const out: LoadedEntry[] = [];
-  for (const line of text.split("\n")) {
+  // Split on either line ending: Windows clones check this file out with
+  // CRLF (core.autocrlf, and .gitattributes only helps a fresh checkout),
+  // and a trailing \r would ride along on every entry's last translation.
+  for (const line of text.split(/\r?\n/)) {
     if (!line) continue;
     const [word, pos, importance, trans] = line.split("\t");
     if (!word || !trans) continue;
