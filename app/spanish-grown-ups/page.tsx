@@ -9,9 +9,9 @@ import SpeakButton from "@/components/SpeakButton";
 
 /**
  * The grown-up landing page for Spanish — the same shape as
- * /mandarin-grown-ups. The lessons are live today (the kid path teaches
- * Spanish); the other tools link to their coming-soon pages, sourced
- * from SPANISH_SECTIONS so the cards and the navbar always agree.
+ * /mandarin-grown-ups. The lessons live in the kid path (which teaches
+ * Spanish too); the five tools are sourced from SPANISH_SECTIONS so the
+ * cards and the navbar always agree.
  */
 
 const es = LANGUAGES.es;

@@ -40,7 +40,7 @@ const GROWN_UP_DOORS = [
   {
     href: "/spanish-grown-ups",
     title: "For grown-ups · Spanish",
-    desc: "Lessons and first words with audio — more coming",
+    desc: "Sounds, dictionary, accents, flashcards, mic practice",
   },
 ];
 
@@ -134,9 +134,10 @@ export default function PathChooser() {
         ))}
       </div>
 
-      {/* The grown-up doors — clear, but deliberately quieter. The full
-          toolkit (tones, CC-CEDICT, stroke order) only exists for
-          Mandarin; the Spanish door leads to what exists so far. */}
+      {/* The grown-up doors — clear, but deliberately quieter. Both
+          languages now have a full toolkit; the lessons themselves live
+          in the kid path, which is why each door's list starts with the
+          tools rather than with "lessons". */}
       {GROWN_UP_DOORS.map((door) => (
         <Link
           key={door.href}
