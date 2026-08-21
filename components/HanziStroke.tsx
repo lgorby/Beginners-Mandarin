@@ -73,8 +73,11 @@ export default function HanziStroke({
       className="flex max-w-full shrink-0 flex-col items-center gap-2"
       style={{ width: size }}
     >
+      {/* data-no-swipe: quiz mode draws strokes with a finger — a drawn
+          stroke must never read as a Paged page-flip swipe. */}
       <div
         ref={ref}
+        data-no-swipe
         className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-700"
         style={{ width: size, height: size }}
       />

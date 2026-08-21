@@ -32,8 +32,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * auto margins center while fitting and collapse to the top — where
  * page 1 starts — once content overflows.
  *
- * Arrow keys are deliberately NOT bound, same as components/Panes.tsx:
- * quizzes and steps already use them via lib/useArrowNav.ts.
+ * Touch swipes flip pages (left/up → next, right/down → previous);
+ * mark a surface that owns its own touch gestures — a drawing box —
+ * with `data-no-swipe`. Arrow keys are deliberately NOT bound, same as
+ * components/Panes.tsx: quizzes and steps already use them via
+ * lib/useArrowNav.ts.
  *
  * scripts/fit-check.mjs knows the data-paged/data-pager markers and
  * fails a page whose paged box overflows without showing controls.
@@ -61,6 +64,13 @@ export default function Paged({
   // the browser clamps scrollTop to scrollHeight − clientHeight, and an
   // atom-aligned final page usually starts beyond that.
   const [spacer, setSpacer] = useState(0);
+  // False until the first real measurement has committed. Surfaced as
+  // data-paged-ready on the root, which is scripts/fit-check.mjs's
+  // hydration signal: before this, the server HTML shows an
+  // overflowing box with no controls, indistinguishable from a broken
+  // pager. Set in the same state batch as that first measurement, so
+  // the attribute never appears before the controls do.
+  const [ready, setReady] = useState(false);
 
   const compute = useCallback(() => {
     const vp = viewportRef.current;
@@ -131,6 +141,7 @@ export default function Paged({
         ? prev
         : next,
     );
+    setReady(true);
   }, []);
 
   useEffect(() => {
@@ -188,23 +199,82 @@ export default function Paged({
       ? { clipPath: `inset(0 0 calc(100% - ${band.end - band.start}px) 0)` }
       : undefined;
 
+  const goTo = (delta: number) =>
+    setPage(Math.min(Math.max(current + delta, 0), pageCount - 1));
+
   const flip = (e: React.MouseEvent, delta: number) => {
     // Pagers can sit inside clickable surfaces (a flashcard); flipping
     // a page must not also flip the card.
     e.stopPropagation();
-    setPage(Math.min(Math.max(current + delta, 0), pageCount - 1));
+    goTo(delta);
+  };
+
+  // Touch swipes flip pages too: left or up → next, right or down →
+  // previous. Touch only, not mouse — desktops have the ‹ › buttons,
+  // and mouse drags select text. A tap never flips (60px threshold),
+  // and two gestures are left alone: anything starting on a
+  // [data-no-swipe] surface (the trace-it drawing box — a stroke drawn
+  // there is not a swipe), and anything starting inside one of the rare
+  // nested boxes that genuinely scrolls (a diagnostic log).
+  const touchStart = useRef<{ x: number; y: number; skip: boolean } | null>(
+    null,
+  );
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) {
+      touchStart.current = null; // a pinch is never a page flip
+      return;
+    }
+    const t = e.touches[0];
+    let skip = false;
+    for (
+      let n = e.target instanceof Element ? e.target : null;
+      n && n !== viewportRef.current;
+      n = n.parentElement
+    ) {
+      const cs = getComputedStyle(n);
+      if (
+        n.hasAttribute("data-no-swipe") ||
+        (/(auto|scroll)/.test(cs.overflowY) &&
+          n.scrollHeight > n.clientHeight) ||
+        (/(auto|scroll)/.test(cs.overflowX) && n.scrollWidth > n.clientWidth)
+      ) {
+        skip = true;
+        break;
+      }
+    }
+    touchStart.current = { x: t.clientX, y: t.clientY, skip };
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || start.skip || pageCount < 2) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    if (Math.max(ax, ay) < 60) return;
+    goTo((ax > ay ? dx : dy) < 0 ? 1 : -1);
   };
 
   const buttonClass =
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-lg font-bold text-zinc-600 transition hover:bg-zinc-100 active:scale-95 disabled:opacity-30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800";
 
   return (
-    <div data-paged-root className={`flex min-h-0 flex-col ${className}`}>
+    <div
+      data-paged-root
+      data-paged-ready={ready ? "" : undefined}
+      className={`flex min-h-0 flex-col ${className}`}
+    >
       <div
         ref={viewportRef}
         data-paged
         role={role}
         onScroll={onScroll}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         style={clip}
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >

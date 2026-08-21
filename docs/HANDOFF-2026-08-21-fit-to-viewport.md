@@ -324,5 +324,15 @@ passed, `tsc --noEmit` clean, lint clean but for the pre-existing
 fit-check.mjs warning.
 
 Still open: the real-device mic race (step 1 above), unchanged. Worth
-a real-device glance too: page-flip feel on actual touch hardware —
-there is deliberately no swipe gesture, only the ‹ › buttons.
+a real-device glance too: page-flip feel on actual touch hardware.
+
+**Later the same day:** swipe gestures were added on top (branch
+`paged-swipe`). Touch-only — left/up flips forward, right/down back, a
+tap still clicks through, and two guards keep gestures honest:
+`data-no-swipe` on the HanziWriter drawing box (a traced stroke is not
+a swipe) and a skip for gestures starting inside a genuinely
+scrollable nested box. Verified with CDP-dispatched touch sequences on
+the hub, strokes, and the kid map. The same round made the fit-check
+deterministic: every Paged stamps `data-paged-ready` when its first
+measurement commits, and the harness waits for that instead of racing
+hydration with a fixed delay.
