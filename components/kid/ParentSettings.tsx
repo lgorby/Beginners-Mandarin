@@ -6,6 +6,7 @@ import { LANGUAGES } from "@/lib/languages";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
 import {
   effectiveVoiceFor,
+  normTag,
   rankedVoiceTag,
   subscribeVoices,
   voiceWarningKind,
@@ -31,14 +32,14 @@ export default function ParentSettings() {
   // exists so no warning flashes on a healthy machine.
   const voiceTag = useSyncExternalStore(
     subscribeVoices,
-    () =>
-      effectiveVoiceFor(
+    () => {
+      const v = effectiveVoiceFor(
         language.speechLang,
         language.preferredVoices,
         language.wrongVarietyVoices
-      )
-        ?.lang.toLowerCase()
-        .replace("_", "-") ?? "",
+      );
+      return v ? normTag(v.lang) : "";
+    },
     () => language.speechLang.toLowerCase()
   );
   const voiceInstalled = voiceTag !== "";

@@ -20,7 +20,14 @@ export function getMandarinVoices(): SpeechSynthesisVoice[] {
   return cachedVoices ?? [];
 }
 
-const normTag = (s: string) => s.toLowerCase().replace("_", "-");
+/**
+ * Fold a BCP-47 tag to a comparable form: lowercase, and "_" region
+ * separators (some browsers report "es_ES") normalised to "-". Exported
+ * so every place that compares two tags — the picker components and
+ * the settings sheet included — folds them the same way; a comparison
+ * that normalises only one side of a match can silently never fire.
+ */
+export const normTag = (s: string) => s.toLowerCase().replace("_", "-");
 
 /**
  * Order voices best-first: `prefer` tags in their given order, then any

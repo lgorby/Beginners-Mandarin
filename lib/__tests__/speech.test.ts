@@ -1,11 +1,30 @@
 import { describe, expect, it } from "vitest";
 import {
   bestCandidate,
+  normTag,
   pickVoice,
   rankVoices,
   scoreMatch,
   voiceWarningKind,
 } from "@/lib/speech";
+
+describe("normTag", () => {
+  // The one predicate every BCP-47 comparison in the app goes through —
+  // VoicePicker and the kid-path settings sheet included — so a tag
+  // written with an underscore (some browsers report "es_ES") still
+  // matches one written with a hyphen.
+  it("lowercases the tag", () => {
+    expect(normTag("ES-mx")).toBe("es-mx");
+  });
+
+  it("folds an underscore region separator to a hyphen", () => {
+    expect(normTag("es_ES")).toBe("es-es");
+  });
+
+  it("agrees on both spellings of the same tag", () => {
+    expect(normTag("es_ES")).toBe(normTag("ES-es"));
+  });
+});
 
 describe("scoreMatch", () => {
   it("gives 100 for an exact match", () => {

@@ -6,11 +6,22 @@ import {
   getMandarinVoices,
   getPreferredVoiceName,
   guessVoiceGender,
+  normTag,
   onVoicesReady,
   setPreferredVoiceName,
   speak,
   voicesFor,
 } from "@/lib/speech";
+
+/**
+ * Is `voiceLang` one of the wrong-variety tags in `avoid`? Both sides
+ * are normalised — an avoid list written with an underscore (e.g.
+ * "es_ES") must still match a voice tag that also uses one.
+ */
+function isWrongVariety(avoid: string[], voiceLang: string): boolean {
+  const tag = normTag(voiceLang);
+  return avoid.some((t) => normTag(t) === tag);
+}
 
 /** Everything about the picker that differs per language. */
 const CONFIG = {
@@ -111,10 +122,7 @@ export default function VoicePicker({
                   const isSel = (selected ?? voices[0]?.name) === v.name;
                   // Ranked last by voicesFor(), but still selectable — a
                   // grown-up may genuinely want it. Say what it is first.
-                  const wrongVariety = cfg.avoid.some(
-                    (t) =>
-                      t.toLowerCase() === v.lang.toLowerCase().replace("_", "-")
-                  );
+                  const wrongVariety = isWrongVariety(cfg.avoid, v.lang);
                   return (
                     <li key={v.name}>
                       <button
@@ -145,12 +153,8 @@ export default function VoicePicker({
                 Tap a voice to hear a sample. Your choice is used for all app
                 audio in this language.
                 {!hasMale && cfg.noMale}
-                {voices.some((v) =>
-                  cfg.avoid.some(
-                    (t) =>
-                      t.toLowerCase() === v.lang.toLowerCase().replace("_", "-")
-                  )
-                ) && cfg.avoidNote}
+                {voices.some((v) => isWrongVariety(cfg.avoid, v.lang)) &&
+                  cfg.avoidNote}
               </p>
             </>
           )}
