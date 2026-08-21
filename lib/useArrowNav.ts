@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 // SSOT for the app's global keyboard shortcuts. Every page binds through
-// the hooks here — ArrowRight/ArrowLeft to page, Space/Enter to retry —
+// the hooks here — ArrowRight/ArrowLeft to page, Space/Enter to act —
 // so a key can never mean different things on different pages.
 
 /**
@@ -49,8 +49,9 @@ export function useArrowNav(
 
 /**
  * Space or Enter fires the page's ACT action — say it / try again on a
- * microphone surface. Pass undefined while the action is unavailable
- * (already listening, recognition unsupported).
+ * microphone surface, "Keep going" on the star path and the lesson
+ * celebration. Pass undefined while the action is unavailable (already
+ * listening, recognition unsupported, mid-lesson).
  *
  * Bind at most one per screen: the handler is global, so a page with
  * two microphones (the grown-up lesson pages) must not use it — Space

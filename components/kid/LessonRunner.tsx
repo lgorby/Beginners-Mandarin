@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRetryKey } from "@/lib/useArrowNav";
 import Paged from "@/components/Paged";
 import BuildStep from "./steps/BuildStep";
 import MatchStep from "./steps/MatchStep";
@@ -46,6 +48,16 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
 
   const lesson = lessonById(lessonId)!;
   const next = lessonsFor(lesson.lang)[lessonIndex(lessonId) + 1];
+
+  // On the celebration screen Enter/Space keeps going, same as the red
+  // button. Unbound during the lesson itself — SayStep owns the key
+  // there (one ACT binding per screen).
+  const router = useRouter();
+  useRetryKey(
+    stars !== null
+      ? () => router.push(next ? `/learn/${next.id}` : "/learn")
+      : undefined,
+  );
 
   // Deep-linking a lesson pulls the whole path into its language, so
   // "Back to the map" always lands on the map this lesson came from.

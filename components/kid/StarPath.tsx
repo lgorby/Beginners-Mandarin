@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRetryKey } from "@/lib/useArrowNav";
 import Paged from "@/components/Paged";
 import PicTile from "./PicTile";
 import ParentSettings from "./ParentSettings";
@@ -33,6 +35,10 @@ export default function StarPath() {
   const currentLesson = lessons.find((l) => l.id === current)!;
   const done = completedCount(progress, lang);
   const finished = done === lessons.length;
+
+  // Enter/Space = the page's one primary action, the "Keep going" card.
+  const router = useRouter();
+  useRetryKey(() => router.push(`/learn/${current}`));
 
   return (
     // The map is a list of N lessons, so it is the one kid screen that
