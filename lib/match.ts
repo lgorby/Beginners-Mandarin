@@ -1,9 +1,19 @@
 // Pure text-matching helpers, shared by the browser (lib/speech.ts) and
 // the server-side pronunciation scorer (lib/pronounce.ts).
 
-/** Strip punctuation/whitespace for comparing recognized speech to a target. */
-export function normalizeZh(s: string): string {
-  return s.replace(/[\s。，！？、．.,!?'"“”‘’]/g, "");
+/**
+ * Strip everything that isn't pronunciation before comparing recognized
+ * speech to a target: punctuation and whitespace (both scripts), case,
+ * and accents. Hanzi pass through untouched — they have no case and NFD
+ * leaves them alone — while "¿Té?" and "te" come out equal, so a
+ * recognizer's accent or capitalization choices never read as a miss.
+ */
+export function normalizeSpeech(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\s。，！？、．.,!?¿¡'"“”‘’]/g, "");
 }
 
 /**
@@ -11,8 +21,8 @@ export function normalizeZh(s: string): string {
  * characters matched in order (longest common subsequence).
  */
 export function scoreMatch(target: string, heard: string): number {
-  const a = normalizeZh(target);
-  const b = normalizeZh(heard);
+  const a = normalizeSpeech(target);
+  const b = normalizeSpeech(heard);
   if (!a.length) return 0;
   if (a === b) return 100;
   const dp: number[][] = Array.from({ length: a.length + 1 }, () =>

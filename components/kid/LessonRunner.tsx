@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import BuildStep from "./steps/BuildStep";
 import MatchStep from "./steps/MatchStep";
 import MeetStep from "./steps/MeetStep";
 import SayStep from "./steps/SayStep";
 import SwapStep from "./steps/SwapStep";
-import { LESSONS, lessonIndex } from "@/lib/curriculum";
+import { lessonById, lessonIndex, lessonsFor } from "@/lib/curriculum";
 import { buildSteps } from "@/lib/steps";
 import {
   awardStars,
@@ -15,6 +15,7 @@ import {
   getProgressSnapshot,
   saveProgress,
 } from "@/lib/progress";
+import { setKidLang } from "@/lib/langPref";
 
 export default function LessonRunner({ lessonId }: { lessonId: string }) {
   const steps = useMemo(() => buildSteps(lessonId), [lessonId]);
@@ -23,8 +24,14 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
   const [allSpoken, setAllSpoken] = useState(true);
   const [stars, setStars] = useState<number | null>(null);
 
-  const lesson = LESSONS[lessonIndex(lessonId)];
-  const next = LESSONS[lessonIndex(lessonId) + 1];
+  const lesson = lessonById(lessonId)!;
+  const next = lessonsFor(lesson.lang)[lessonIndex(lessonId) + 1];
+
+  // Deep-linking a lesson pulls the whole path into its language, so
+  // "Back to the map" always lands on the map this lesson came from.
+  useEffect(() => {
+    setKidLang(lesson.lang);
+  }, [lesson.lang]);
 
   const onDone = (r: { correct: boolean; spoken: boolean }) => {
     const step = steps[index];

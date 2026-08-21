@@ -1,8 +1,9 @@
 # Where this project is
 
-**Last updated:** 2026-08-20 (evening)
-**Branch:** `master` — PR #1 (kid learning path) and PR #2 (hear-first
-speaking flow) are both merged; no feature branches are open.
+**Last updated:** 2026-08-20 (late evening)
+**Branch:** `spanish-kid-path` — adds American Spanish to the kid path
+behind a language chooser. PR #1 (kid learning path), PR #2 (hear-first
+speaking flow), and PR #3 (da/xiao pictures) are merged on `master`.
 
 Read this first when picking the work back up. The spec and plan below
 say what was *intended*; this file says what actually happened and what
@@ -25,6 +26,41 @@ npm run dev            # http://localhost:3000
 | `npx next build` | Production build |
 | `npx tsc --noEmit` | Typecheck — **must run after a build**, see gotchas |
 | `npx eslint .` | Lint — clean |
+
+## The kid path speaks two languages (2026-08-20)
+
+The kid path now teaches **Mandarin or American (Latin American) Spanish**,
+chosen with flag chips on the front door and in the ⚙️ grown-up settings.
+How it is built (DRY/SSOT — one engine, N courses):
+
+- `lib/languages.ts` — everything that varies by language except content:
+  BCP-47 tags for TTS/recognition (`es-MX`), how word tiles join into a
+  sentence (Mandarin runs together, Spanish takes spaces), and question
+  intonation (Spanish asks by tone alone, so spoken questions are wrapped
+  ¿…?; questionness is derived from the English gloss ending in "?").
+- `lib/courses/zh.ts` / `lib/courses/es.ts` — data only. `lib/curriculum.ts`
+  stamps each course with its language and merges them; word text is the
+  WORDS key (hanzi and Latin script cannot collide — a test guards it).
+  `lib/steps.ts` needed only a per-language lookup change; the step engine,
+  step components, and every curriculum guardrail test run over both
+  courses unchanged.
+- The Spanish course respects conjugation: verbs are taught in the person
+  the sentences use (bebo/como/quiero/voy), subjects are never swapped out
+  from under a conjugated verb, and the multipliers are *quieres* (offer by
+  intonation), *él/ella + es*, and *no*. Adjectives come after the noun
+  ("un gato grande") and the BUILD ladder teaches that order.
+- Progress: one store, per-language paths — lesson ids are globally unique
+  so `mandarin-kid-v1` needed no migration; each language has its own
+  stars, unlocks, and "keep going" card. `kid-lang-v1` holds the choice,
+  and opening a lesson pulls the path into that lesson's language.
+- Speech: `lib/kidSpeech.ts` is the kid path's only way to speak content
+  (word → its language's voice). `/api/score` (pinyin+tones) stays
+  Mandarin-only; Spanish SAY steps score on the normalized transcript
+  (case/accents/¿? stripped), and pinyin/gentle-tones settings hide when
+  Spanish is active. The grown-up toolkit remains Mandarin-only on purpose.
+- Pictures: Spanish reuses the six hand-drawn SVGs via a new
+  `art: { from: "copy", of }` form in `scripts/fetch-pics.mjs`; the rest
+  vendor from OpenMoji under Spanish ids. `npm run pics` covers both.
 
 ## What exists now
 
@@ -69,6 +105,15 @@ they failed. What stands now:
   on an orange highlight). Each picture now carries its meaning alone.
 
 ## Not verified — do this first
+
+**Speak the Spanish path on a real machine.** Tests, build, lint, and an
+SSR smoke test all pass, but nobody has yet heard the es-MX voice choice,
+watched `es-MX` recognition score a child's "yo bebo té", or confirmed the
+¿…? wrap actually raises the TTS intonation. `/learn/hola` end-to-end in
+Edge is the first thing to do — the same hand-verification the Mandarin
+speaking flow got on 2026-08-20. Also check a machine with no Spanish voice
+installed: speak() falls back to the browser default voice, which may
+sound wrong enough to need a "no Spanish voice" notice like the mic one.
 
 **Put lessons 1–3 in front of an actual child.** Everything above was
 verified by an adult. Still untested with a child: whether the spoken

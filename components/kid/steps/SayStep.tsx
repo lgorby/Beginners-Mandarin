@@ -9,9 +9,9 @@ import {
   hasSpeechRecognition,
   micPermissionGranted,
   recognizeAttempt,
-  speak,
   stopSpeaking,
 } from "@/lib/speech";
+import { languageOf, sentenceText, speakSentence } from "@/lib/kidSpeech";
 import { useClientValue } from "@/lib/useClientValue";
 import type { Step } from "@/lib/steps";
 import type { SyllableMark } from "@/lib/pronounce";
@@ -25,7 +25,12 @@ export default function SayStep({
   step: Extract<Step, { kind: "SAY" }>;
   onDone: (r: { correct: boolean; spoken: boolean }) => void;
 }) {
-  const target = step.words.join("");
+  const language = languageOf(step.words);
+  // Pinyin-and-tones rescoring only exists for Mandarin; other languages
+  // are spelled the way they sound, so the transcript match IS the score.
+  const isMandarin = language.code === "zh";
+  const question = step.en.endsWith("?");
+  const target = sentenceText(step.words, { question });
   // A lazy useState initialiser would run during the server render too and
   // hydrate to a different value; this reads the browser after hydration.
   const supported = useClientValue(hasSpeechRecognition, false);
@@ -57,7 +62,7 @@ export default function SayStep({
     // start() is accepted but no events ever fire, so the button would
     // pulse until the watchdog. Abort any previous session first.
     recRef.current?.abort();
-    const rec = getRecognizer();
+    const rec = getRecognizer(language.recognitionLang);
     if (!rec) return;
     recRef.current = rec;
     // The word must never play into an open microphone: the recognizer
@@ -82,7 +87,7 @@ export default function SayStep({
         if (p === "mic") ding(); // the mic is truly open — speak now
       },
       settle: async (best) => {
-        if (best.candidates.length > 0) {
+        if (isMandarin && best.candidates.length > 0) {
           // Rescore by sound: the recognizer often writes a correct
           // pronunciation down as a homophone (吃 → 持), and characters
           // must never punish that. Also fetches the per-syllable report.
@@ -136,7 +141,7 @@ export default function SayStep({
       setTrouble("unheard");
       setListening(false);
     }
-  }, [target]);
+  }, [target, language.recognitionLang, isMandarin]);
 
   // Speak the word, then open the mic hands-free: hear it, echo it — no
   // button on the first go. Waits for the TTS to actually finish, opens
@@ -145,7 +150,8 @@ export default function SayStep({
   useEffect(() => {
     autoArmed.current = true;
     speakTimer.current = setTimeout(() => {
-      speak(target, {
+      speakSentence(step.words, {
+        question,
         onDone: async () => {
           if (!autoArmed.current || !hasSpeechRecognition()) return;
           if (!(await micPermissionGranted())) return;
@@ -164,7 +170,7 @@ export default function SayStep({
       timers.forEach((t) => t.current && clearTimeout(t.current));
       rec.current?.abort();
     };
-  }, [target, listen]);
+  }, [step.words, question, listen]);
 
   return (
     <StepShell
@@ -182,7 +188,7 @@ export default function SayStep({
         type="button"
         onClick={() => {
           autoArmed.current = false; // replaying must not open the mic
-          speak(target);
+          speakSentence(step.words, { question });
         }}
         className="rounded-full bg-red-50 px-6 py-4 text-3xl dark:bg-red-950"
         aria-label="Hear it again"

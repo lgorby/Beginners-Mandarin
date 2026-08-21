@@ -4,7 +4,7 @@ import { useState } from "react";
 import PicTile from "../PicTile";
 import SentenceRow from "../SentenceRow";
 import StepShell from "../StepShell";
-import { speak } from "@/lib/speech";
+import { speakSentence, speakWord } from "@/lib/kidSpeech";
 import type { Step } from "@/lib/steps";
 
 export default function SwapStep({
@@ -30,21 +30,23 @@ export default function SwapStep({
       />
 
       <div className="flex flex-wrap justify-center gap-3">
-        {step.choices.map((zh) => (
+        {step.choices.map((word) => (
           <PicTile
-            key={zh}
-            zh={zh}
+            key={word}
+            wordKey={word}
             size="md"
             disabled={solved}
-            selected={solved && zh === step.answer}
+            selected={solved && word === step.answer}
             speakOnClick={false}
             onClick={() => {
-              setPicked(zh);
-              if (zh === step.answer) {
-                speak(step.sentence.join(""));
+              setPicked(word);
+              if (word === step.answer) {
+                speakSentence(step.sentence, {
+                  question: step.en.endsWith("?"),
+                });
               } else {
                 setMissed(true);
-                speak(zh);
+                speakWord(word);
               }
             }}
           />

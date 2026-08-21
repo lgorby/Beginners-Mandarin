@@ -17,6 +17,15 @@ describe("scoreMatch", () => {
   it("gives 0 when nothing matches", () => {
     expect(scoreMatch("吃", "持")).toBe(0);
   });
+
+  it("ignores case and accents so Spanish transcripts never lose points to spelling", () => {
+    expect(scoreMatch("¿tú quieres té?", "Tu quieres te")).toBe(100);
+  });
+
+  it("scores a partial Spanish sentence partially", () => {
+    expect(scoreMatch("yo bebo agua", "yo agua")).toBeLessThan(100);
+    expect(scoreMatch("yo bebo agua", "yo agua")).toBeGreaterThan(40);
+  });
 });
 
 describe("bestCandidate", () => {

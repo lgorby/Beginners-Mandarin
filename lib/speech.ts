@@ -1,11 +1,13 @@
 "use client";
 
-// Browser speech helpers: Mandarin text-to-speech via speechSynthesis
-// and speech recognition via the Web Speech API.
+// Browser speech helpers: text-to-speech via speechSynthesis and speech
+// recognition via the Web Speech API. Mandarin (zh-CN) is the default
+// everywhere so the grown-up section never has to say so; the kid path
+// passes each word's own language through.
 
 import { scoreMatch } from "./match";
 
-export { normalizeZh, scoreMatch } from "./match";
+export { normalizeSpeech, scoreMatch } from "./match";
 
 let cachedVoices: SpeechSynthesisVoice[] | null = null;
 
@@ -16,6 +18,22 @@ export function getMandarinVoices(): SpeechSynthesisVoice[] {
     cachedVoices = all.filter((v) => /^zh([-_]|$)/i.test(v.lang));
   }
   return cachedVoices ?? [];
+}
+
+/**
+ * Voices for a BCP-47 tag, best match first: exact region ("es-MX")
+ * before same language ("es-ES"). Unlike the Mandarin list this is not
+ * cached — it is only read at speak() time.
+ */
+function voicesFor(lang: string): SpeechSynthesisVoice[] {
+  if (typeof window === "undefined" || !window.speechSynthesis) return [];
+  const wanted = lang.toLowerCase();
+  const prefix = wanted.split("-")[0];
+  const tag = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace("_", "-");
+  return window.speechSynthesis
+    .getVoices()
+    .filter((v) => tag(v) === prefix || tag(v).startsWith(`${prefix}-`))
+    .sort((a, b) => Number(tag(b) === wanted) - Number(tag(a) === wanted));
 }
 
 // --- Voice preference (persisted, used by every speak() call) -----------
@@ -63,21 +81,26 @@ export function onVoicesReady(cb: () => void) {
 }
 
 /**
- * Speak Mandarin text aloud. rate < 1 slows it down for learners.
- * onDone fires when the utterance finishes OR is interrupted — callers
- * must check they still want to act (e.g. the hands-free mic open).
+ * Speak learner-language text aloud — Mandarin unless `lang` says
+ * otherwise. rate < 1 slows it down for learners. onDone fires when the
+ * utterance finishes OR is interrupted — callers must check they still
+ * want to act (e.g. the hands-free mic open). The persisted voice
+ * preference is a Mandarin voice, so it only applies to zh.
  */
 export function speak(
   text: string,
-  opts?: { rate?: number; voiceName?: string; onDone?: () => void }
+  opts?: { rate?: number; voiceName?: string; onDone?: () => void; lang?: string }
 ) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
+  const lang = opts?.lang ?? "zh-CN";
+  const isMandarin = /^zh/i.test(lang);
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "zh-CN";
+  u.lang = lang;
   u.rate = opts?.rate ?? 0.85;
-  const voices = getMandarinVoices();
-  const wanted = opts?.voiceName ?? getPreferredVoiceName();
+  const voices = isMandarin ? getMandarinVoices() : voicesFor(lang);
+  const wanted =
+    opts?.voiceName ?? (isMandarin ? getPreferredVoiceName() : null);
   const chosen =
     (wanted ? voices.find((v) => v.name === wanted) : undefined) ?? voices[0];
   if (chosen) u.voice = chosen;

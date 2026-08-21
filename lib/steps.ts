@@ -3,7 +3,7 @@
 // lesson is a data edit in lib/curriculum.ts — never a change here.
 
 import {
-  LESSONS,
+  lessonById,
   lessonIndex,
   wordsTaughtBefore,
   type KidLesson,
@@ -11,7 +11,7 @@ import {
 
 export type Step =
   /** See a new word: big picture, characters, audio plays automatically. */
-  | { kind: "MEET"; zh: string }
+  | { kind: "MEET"; word: string }
   /** Hear a word, tap its picture out of `choices`. */
   | { kind: "MATCH"; answer: string; choices: string[] }
   /** Say a word or the whole sentence into the microphone. */
@@ -99,22 +99,22 @@ function chooseBlank(lesson: KidLesson, swap: string[], target: string[]): numbe
 }
 
 export function buildSteps(lessonId: string): Step[] {
+  const lesson: KidLesson | undefined = lessonById(lessonId);
+  if (!lesson) throw new Error(`No lesson with id "${lessonId}"`);
   const index = lessonIndex(lessonId);
-  if (index < 0) throw new Error(`No lesson with id "${lessonId}"`);
-  const lesson: KidLesson = LESSONS[index];
 
   // Most recently taught first: recent words are the ones worth confusing
   // the answer with, and it stops lesson 1's words being the distractor in
   // every exercise for the rest of the course.
-  const recent = [...wordsTaughtBefore(index)].reverse();
+  const recent = [...wordsTaughtBefore(lesson.lang, index)].reverse();
   const steps: Step[] = [];
   const metThisLesson: string[] = [];
 
   // 1 & 2. Meet each new word, say it, and MATCH after every second one.
-  lesson.newWords.forEach((zh, i) => {
-    steps.push({ kind: "MEET", zh });
-    steps.push({ kind: "SAY", words: [zh], en: "" });
-    metThisLesson.push(zh);
+  lesson.newWords.forEach((word, i) => {
+    steps.push({ kind: "MEET", word });
+    steps.push({ kind: "SAY", words: [word], en: "" });
+    metThisLesson.push(word);
 
     const isCheckpoint = (i + 1) % MATCH_EVERY === 0;
     // A lesson teaching one word (吗, 不) never reaches a checkpoint.
@@ -124,9 +124,9 @@ export function buildSteps(lessonId: string): Step[] {
     // risk of being confused — then recent lessons. Lesson 1 has no
     // earlier material, so it leans entirely on its own words.
     const pool = [...metThisLesson, ...recent];
-    const distractors = pickDistractors(zh, pool, MATCH_CHOICES - 1);
+    const distractors = pickDistractors(word, pool, MATCH_CHOICES - 1);
     if (distractors.length < MATCH_CHOICES - 1) return; // too early to test
-    steps.push({ kind: "MATCH", answer: zh, choices: [zh, ...distractors] });
+    steps.push({ kind: "MATCH", answer: word, choices: [word, ...distractors] });
   });
 
   // 3. Ladder the build sentence: one BUILD per prefix of length 2..N.

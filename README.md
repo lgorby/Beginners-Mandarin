@@ -1,19 +1,26 @@
-# 你好 Mandarin — Beginners Mandarin
+# 你好 Mandarin — Beginners Mandarin (& Spanish)
 
-A web app that teaches Mandarin Chinese from absolute zero, with sound, speech,
-and visuals throughout. Opening the app puts you at a front door with two
-ways in.
+A web app that teaches Mandarin Chinese from absolute zero — and, on the
+kids' path, American (Latin American) Spanish too — with sound, speech, and
+visuals throughout. Opening the app puts you at a front door with two ways
+in and a language chooser for the kids' path.
 
 ## 🧒 The kids' path (`/learn`)
 
-A guided route for a child aged roughly 5–11. Ten lessons carry one pictured
-word forward into a spoken sentence, one screen at a time:
+A guided route for a child aged roughly 5–11, in the language chosen on the
+front door (🇨🇳 中文 or 🇲🇽 Español). Each language has its own ten lessons
+and its own stars; both carry one pictured word forward into a spoken
+sentence, one screen at a time:
 
     你  →  你好  →  我喝茶  →  你喝茶吗？
+    hola  →  un gato  →  yo bebo té  →  ¿tú quieres té?
 
-Twenty-four words generate over a hundred grammatical sentences, because three
-of the ten lessons teach a **multiplier** rather than vocabulary: 吗 turns any
-sentence into a question, 他/她 swap the subject, and 不 negates it.
+A couple dozen words generate over a hundred grammatical sentences, because
+several lessons teach a **multiplier** rather than vocabulary. In Mandarin,
+吗 turns any sentence into a question, 他/她 swap the subject, and 不
+negates it. In Spanish — where verbs conjugate, so subjects can't be
+swapped freely — the multipliers are *quieres* (one word plus rising
+intonation makes anything an offer), *él/ella + es*, and *no*.
 
 - **Pictures first.** Every word has its own SVG; the child taps a picture,
   never a word list.
@@ -30,7 +37,8 @@ shows their star total, the grown-up card is a quieter one below it.
 
 ## 🧑 The grown-up section (`/grown-ups`)
 
-The full toolkit, unchanged:
+The full toolkit — Mandarin only, since tones, CC-CEDICT, and stroke order
+have no Spanish equivalent:
 
 - **🎵 Tone trainer** — learn the four tones first (the classic mā/má/mǎ/mà
   demo), then an ear-training quiz. Tones are color-coded everywhere in the app
@@ -67,8 +75,9 @@ npm run build && npm start   # production
 Open http://localhost:3000.
 
 **Browser notes**: audio (text-to-speech) works in all modern browsers using
-the operating system's Chinese voices. Microphone scoring uses the Web Speech
-API's speech recognition, which works best in **Chrome or Edge**.
+the operating system's Chinese and Spanish voices (es-MX preferred, any
+`es-*` voice accepted). Microphone scoring uses the Web Speech API's speech
+recognition, which works best in **Chrome or Edge**.
 
 ## Portable Windows app (no install, no Vercel)
 
@@ -93,12 +102,16 @@ port 3210 and opens the app in your default browser. Stop it with
   (`nǐ hǎo`) and drives tone coloring.
 - `lib/vocab.ts` / `lib/lessons.ts` — the HSK-1-based curriculum behind the
   grown-up section.
-- `lib/curriculum.ts` — the single source of truth for the kids' path.
-  Sentences are stored as **arrays of word references**, not strings, so
-  `lib/steps.ts` can derive every exercise from them and a test can prove no
-  sentence ever uses a word the child has not been taught.
+- `lib/curriculum.ts` — the single source of truth for the kids' path. It
+  merges one course per language (`lib/courses/zh.ts`, `lib/courses/es.ts`)
+  and stamps each with its language; `lib/languages.ts` holds everything
+  else that varies by language (speech tags, word joining, question
+  intonation). Sentences are stored as **arrays of word references**, not
+  strings, so `lib/steps.ts` can derive every exercise from them and a test
+  can prove no sentence ever uses a word the child has not been taught.
 - `lib/steps.ts` — turns a lesson into its ordered exercise sequence. Pure and
-  deterministic, so adding a lesson is a data edit and never a UI change.
+  deterministic, so adding a lesson — or a whole language — is a data edit
+  and never a UI change.
 - `npm test` — Vitest (dev-only; the portable build is unaffected).
   Run `npm run pics` after adding a word to the kids' curriculum.
 - `lib/speech.ts` — browser text-to-speech (zh-CN voices) and speech
