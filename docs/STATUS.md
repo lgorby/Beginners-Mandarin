@@ -1,9 +1,10 @@
 # Where this project is
 
 **Last updated:** 2026-08-20 (late evening)
-**Branch:** `spanish-kid-path` — adds American Spanish to the kid path
-behind a language chooser. PR #1 (kid learning path), PR #2 (hear-first
-speaking flow), and PR #3 (da/xiao pictures) are merged on `master`.
+**Branch:** `two-card-home` — replaces the front door's language chips
+with one door per language. PRs #1–#3 (kid path, speaking flow,
+pictures) and #4 (American Spanish behind a language chooser) are merged
+on `master`.
 
 Read this first when picking the work back up. The spec and plan below
 say what was *intended*; this file says what actually happened and what
@@ -29,8 +30,11 @@ npm run dev            # http://localhost:3000
 
 ## The kid path speaks two languages (2026-08-20)
 
-The kid path now teaches **Mandarin or American (Latin American) Spanish**,
-chosen with flag chips on the front door and in the ⚙️ grown-up settings.
+The kid path now teaches **Mandarin or American (Latin American) Spanish**.
+The front door shows one door per language — Mandarin red, Spanish green,
+each with its own stars and next lesson — and tapping a door IS the
+language choice (`two-card-home`); the ⚙️ grown-up settings keep the flag
+chips (`LangSwitch`) for switching from inside the path.
 How it is built (DRY/SSOT — one engine, N courses):
 
 - `lib/languages.ts` — everything that varies by language except content:
@@ -61,6 +65,24 @@ How it is built (DRY/SSOT — one engine, N courses):
 - Pictures: Spanish reuses the six hand-drawn SVGs via a new
   `art: { from: "copy", of }` form in `scripts/fetch-pics.mjs`; the rest
   vendor from OpenMoji under Spanish ids. `npm run pics` covers both.
+
+## Arrow keys page everything (2026-08-20)
+
+ArrowRight means Next and ArrowLeft means Previous on every surface that
+pages, through one hook — `lib/useArrowNav.ts` is the SSOT for the key
+behavior (ignores typing in fields and held modifiers, so the dictionary
+search and Alt+Left stay untouched):
+
+- `components/PagerNav.tsx` — the ONLY grown-up Previous/Next row
+  (button- or link-driven). Used by `/practice` (replacing its
+  hand-rolled row) and `/lessons/[id]`, which also gained the missing
+  "← Lesson N-1" link.
+- The kid path's `StepShell` keeps its own child-sized chrome but binds
+  the same hook: a ← button now sits left of Next (disabled on a
+  lesson's first step), and `LessonRunner` passes `onBack` through the
+  step components. Going back never rewinds results — stars only go up.
+- `/tones` binds ArrowRight to "Next word" only; the quiz draws at
+  random, so a Previous cannot exist there.
 
 ## What exists now
 

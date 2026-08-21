@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { speak } from "@/lib/speech";
 import { TONE_COLORS, TONE_DESCRIPTIONS } from "@/lib/pinyin";
+import { useArrowNav } from "@/lib/useArrowNav";
 
 // The classic "ma" demonstration: same syllable, four meanings.
 const MA = [
@@ -44,6 +45,11 @@ export default function TonesPage() {
     setGuess(t);
     setStreak(t === quizWord.tone ? streak + 1 : 0);
   };
+
+  // ArrowRight starts the quiz / plays the next word — the same key that
+  // means "next" everywhere else. There is no Previous: the quiz draws
+  // at random, so there is no history to go back to.
+  useArrowNav(undefined, nextQuiz);
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">

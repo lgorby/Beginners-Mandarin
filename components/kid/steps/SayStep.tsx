@@ -21,9 +21,11 @@ import { useGentleTones } from "../../useGentleTones";
 export default function SayStep({
   step,
   onDone,
+  onBack,
 }: {
   step: Extract<Step, { kind: "SAY" }>;
   onDone: (r: { correct: boolean; spoken: boolean }) => void;
+  onBack?: () => void;
 }) {
   const language = languageOf(step.words);
   // Pinyin-and-tones rescoring only exists for Mandarin; other languages
@@ -176,6 +178,7 @@ export default function SayStep({
     <StepShell
       kind="SAY"
       continueLabel={score !== null || !supported ? "Next" : "Skip"}
+      onBack={onBack}
       onContinue={() => onDone({ correct: true, spoken: score !== null })}
     >
       <SentenceRow

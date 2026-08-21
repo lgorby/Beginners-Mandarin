@@ -17,9 +17,11 @@ const scramble = (words: string[]) => [...words].reverse();
 export default function BuildStep({
   step,
   onDone,
+  onBack,
 }: {
   step: Extract<Step, { kind: "BUILD" }>;
   onDone: (r: { correct: boolean; spoken: boolean }) => void;
+  onBack?: () => void;
 }) {
   const [placed, setPlaced] = useState<string[]>([]);
   const [missed, setMissed] = useState(false);
@@ -54,6 +56,7 @@ export default function BuildStep({
     <StepShell
       kind="BUILD"
       canContinue={solved}
+      onBack={onBack}
       onContinue={() => onDone({ correct: !missed, spoken: false })}
     >
       <button
