@@ -1,0 +1,72 @@
+import { describe, expect, it } from "vitest";
+import { articleFor, posLabel, spokenForm } from "../spanishNouns";
+
+describe("articleFor", () => {
+  it("gives plain masculine and feminine nouns their article", () => {
+    expect(articleFor("libro", "nm")).toBe("el");
+    expect(articleFor("casa", "nf")).toBe("la");
+  });
+
+  it("gives a stressed a- feminine noun its masculine article", () => {
+    // "la agua" is wrong Spanish; the article changes, the gender doesn't.
+    expect(articleFor("agua", "nf")).toBe("el");
+    expect(articleFor("águila", "nf")).toBe("el");
+  });
+
+  it("treats an nmf headword whose feminine is a different word as masculine", () => {
+    // WikDict tags perro/perra, actor/actriz and abuelo/abuela nmf, but
+    // the headword it stores is only the masculine one — "el/la perro"
+    // is not Spanish, and printing it also cost these 417 entries their
+    // spoken article.
+    expect(articleFor("perro", "nmf")).toBe("el");
+    expect(articleFor("actor", "nmf")).toBe("el");
+    expect(articleFor("abuelo", "nmf")).toBe("el");
+  });
+
+  it("keeps el/la for genuinely common-gender nouns", () => {
+    // One spelling, either gender: el artista and la artista are both
+    // right, so neither article can be dropped.
+    expect(articleFor("activista", "nmf")).toBe("el/la");
+    expect(articleFor("gimnasta", "nmf")).toBe("el/la");
+    expect(articleFor("poeta", "nmf")).toBe("el/la");
+  });
+
+  it("gives non-nouns no article at all", () => {
+    expect(articleFor("hola", "interj")).toBeUndefined();
+    expect(articleFor("comer", "v")).toBeUndefined();
+    expect(articleFor("rápido", "adj")).toBeUndefined();
+  });
+});
+
+describe("spokenForm", () => {
+  it("speaks a noun with its article, because the article is part of the word", () => {
+    expect(spokenForm("casa", "nf")).toBe("la casa");
+    expect(spokenForm("agua", "nf")).toBe("el agua");
+    expect(spokenForm("perro", "nmf")).toBe("el perro");
+  });
+
+  it("speaks a common-gender noun bare", () => {
+    // "el/la" is a written shorthand — read aloud it is nonsense.
+    expect(spokenForm("activista", "nmf")).toBe("activista");
+  });
+
+  it("speaks a non-noun exactly as written", () => {
+    expect(spokenForm("hola", "interj")).toBe("hola");
+  });
+});
+
+describe("posLabel", () => {
+  it("labels an nmf headword by what it actually is", () => {
+    expect(posLabel("perro", "nmf")).toBe("noun (m.)");
+    expect(posLabel("activista", "nmf")).toBe("noun (m./f.)");
+  });
+
+  it("labels the other tags from the fixed table", () => {
+    expect(posLabel("casa", "nf")).toBe("noun (f.)");
+    expect(posLabel("comer", "v")).toBe("verb");
+  });
+
+  it("returns undefined for a tag it has no label for", () => {
+    expect(posLabel("algo", "")).toBeUndefined();
+  });
+});

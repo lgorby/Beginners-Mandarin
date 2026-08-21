@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LANGUAGES } from "@/lib/languages";
 import SpeakButton from "@/components/SpeakButton";
+import { articleFor, posLabel, spokenForm } from "@/lib/spanishNouns";
 
 interface Result {
   word: string;
@@ -11,44 +12,6 @@ interface Result {
 }
 
 const es = LANGUAGES.es;
-
-// A noun's article is part of learning the word, so nouns display AND
-// speak with el/la. The other tags just label the entry.
-const ARTICLE: Record<string, string> = { nm: "el", nf: "la", nmf: "el/la" };
-
-// Feminine nouns that begin with a STRESSED a-/ha- take "el" in the
-// singular (el agua, el águila) — "la agua" is wrong Spanish. Detecting
-// the stress needs syllabification, so the common cases are listed.
-const EL_FEMININE = new Set([
-  "agua", "águila", "ala", "alba", "alga", "alma", "ama", "ancla", "ansia",
-  "area", "área", "arma", "arpa", "asma", "asta", "aula", "ave", "aya",
-  "haba", "habla", "hacha", "hada", "hambre", "haya",
-]);
-
-function articleFor(r: Result): string | undefined {
-  if (r.pos === "nf" && EL_FEMININE.has(r.word)) return "el";
-  return ARTICLE[r.pos];
-}
-const POS_LABEL: Record<string, string> = {
-  nm: "noun (m.)",
-  nf: "noun (f.)",
-  nmf: "noun (m./f.)",
-  n: "noun",
-  prop: "name",
-  adj: "adjective",
-  v: "verb",
-  adv: "adverb",
-  loc: "phrase",
-  interj: "interjection",
-  saying: "saying",
-};
-
-/** What the 🔊 button says: "el perro", "la casa", or just the word. */
-function spokenForm(r: Result): string {
-  const article = articleFor(r);
-  // el/la is a written shorthand, not sayable — speak those bare.
-  return article && article !== "el/la" ? `${article} ${r.word}` : r.word;
-}
 
 export default function SpanishDictionaryPage() {
   const [query, setQuery] = useState("");
@@ -149,7 +112,7 @@ export default function SpanishDictionaryPage() {
             className="flex items-start gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
           >
             <SpeakButton
-              text={spokenForm(r)}
+              text={spokenForm(r.word, r.pos)}
               showSlow
               lang={es.speechLang}
               voicePrefer={es.preferredVoices}
@@ -158,16 +121,16 @@ export default function SpanishDictionaryPage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="text-3xl font-semibold" lang="es-MX">
-                  {articleFor(r) && (
+                  {articleFor(r.word, r.pos) && (
                     <span className="mr-2 text-xl font-normal text-zinc-400">
-                      {articleFor(r)}
+                      {articleFor(r.word, r.pos)}
                     </span>
                   )}
                   {r.word}
                 </span>
-                {POS_LABEL[r.pos] && (
+                {posLabel(r.word, r.pos) && (
                   <span className="text-sm text-zinc-400">
-                    {POS_LABEL[r.pos]}
+                    {posLabel(r.word, r.pos)}
                   </span>
                 )}
               </div>
