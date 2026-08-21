@@ -26,6 +26,12 @@ export interface Language {
    * Mandarin's question is the word 吗 and needs nothing.
    */
   wrapQuestion?: (s: string) => string;
+  /**
+   * The Windows voice pack that provides this language's TTS voice,
+   * named in the missing-voice notice. Mandarin omits it — the grown-up
+   * VoicePicker owns that message.
+   */
+  voicePack?: string;
 }
 
 export const LANGUAGES: Record<LangCode, Language> = {
@@ -48,6 +54,7 @@ export const LANGUAGES: Record<LangCode, Language> = {
     recognitionLang: "es-MX",
     joiner: " ",
     wrapQuestion: (s) => `¿${s}?`,
+    voicePack: "Spanish (Mexico)",
   },
 };
 

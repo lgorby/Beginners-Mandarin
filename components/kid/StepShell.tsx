@@ -16,6 +16,7 @@ export default function StepShell({
   canContinue = true,
   continueLabel = "Next",
   narrate = true,
+  spokenCue,
 }: {
   kind: Step["kind"];
   children: React.ReactNode;
@@ -23,19 +24,26 @@ export default function StepShell({
   canContinue?: boolean;
   continueLabel?: string;
   narrate?: boolean;
+  /**
+   * Extra English spoken after the instruction — the meaning cue a
+   * pre-reader needs when the exercise itself is ambiguous (SWAP's
+   * "Which one fits? Hello, Dad!"). Replayed with the instruction.
+   */
+  spokenCue?: string;
 }) {
   const copy = STEP_COPY[kind];
+  const line = spokenCue ? `${copy.text} ${spokenCue}` : copy.text;
 
   // Speak the instruction so a pre-reader can follow the app.
   useEffect(() => {
-    if (narrate) speakEnglish(copy.text);
-  }, [copy.text, narrate]);
+    if (narrate) speakEnglish(line);
+  }, [line, narrate]);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-between gap-6 px-4 py-6">
       <button
         type="button"
-        onClick={() => speakEnglish(copy.text)}
+        onClick={() => speakEnglish(line)}
         className="flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-lg font-semibold dark:bg-zinc-800"
       >
         <span aria-hidden>{copy.icon}</span>

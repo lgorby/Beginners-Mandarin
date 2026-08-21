@@ -98,22 +98,30 @@ they failed. What stands now:
   hands-free (ding + status + soundwave driven by real recognizer
   events; auto-open only when mic permission is already granted, once
   per step, disarmed by any manual tap). BUILD steps speak the sentence
-  to assemble, with a replay button. SWAP stays silent on purpose — the
-  sentence would announce the answer.
+  to assemble, with a replay button. SWAP never speaks the
+  target-language sentence before it is solved — that would announce the
+  answer — but it DOES speak and show the English meaning ("Which one
+  fits? Hello, Dad!"): sibling distractors genuinely fit the sentence
+  shape, so without the meaning the step was a coin flip. A real user
+  hit exactly that on the Spanish hola-mamá/papá swap (2026-08-20).
 - **Pictures**: `chi.svg`, `da.svg`, `xiao.svg` were redrawn after the
   originals confused a real user (chi read as shouting; da/xiao relied
   on an orange highlight). Each picture now carries its meaning alone.
 
 ## Not verified — do this first
 
-**Speak the Spanish path on a real machine.** Tests, build, lint, and an
-SSR smoke test all pass, but nobody has yet heard the es-MX voice choice,
-watched `es-MX` recognition score a child's "yo bebo té", or confirmed the
-¿…? wrap actually raises the TTS intonation. `/learn/hola` end-to-end in
-Edge is the first thing to do — the same hand-verification the Mandarin
-speaking flow got on 2026-08-20. Also check a machine with no Spanish voice
-installed: speak() falls back to the browser default voice, which may
-sound wrong enough to need a "no Spanish voice" notice like the mic one.
+**Speak the Spanish path on a real machine.** Real use already caught
+the worst of it: with no Spanish voice installed, the browser's default
+voice read the Spanish — on this project's machine a Chinese voice, so
+the path sounded like Mandarin mixed into Spanish. Two guards now stand
+(2026-08-20): speak() falls back to an English voice rather than the
+browser default when a language has no voice, and the kid ⚙️ settings
+show a "No Spanish voice installed" notice naming the Windows voice pack
+(Settings → Time &amp; Language → Speech → Add voices → Spanish
+(Mexico)). Still unheard: the actual es-MX voice, `es-MX` recognition
+scoring "yo bebo té", and whether the ¿…? wrap raises the TTS
+intonation — install the voice pack, then run `/learn/hola` end-to-end
+in Edge, the same hand-verification the Mandarin flow got.
 
 **Put lessons 1–3 in front of an actual child.** Everything above was
 verified by an adult. Still untested with a child: whether the spoken

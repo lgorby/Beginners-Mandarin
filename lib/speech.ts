@@ -81,6 +81,24 @@ export function onVoicesReady(cb: () => void) {
 }
 
 /**
+ * Whether ANY voice for a BCP-47 tag's language is installed. Voices
+ * load async in some browsers — pair with subscribeVoices via
+ * useSyncExternalStore to re-read when they arrive.
+ */
+export function hasVoiceFor(lang: string): boolean {
+  return voicesFor(lang).length > 0;
+}
+
+/** Subscribe to the voice list changing, shaped for useSyncExternalStore. */
+export function subscribeVoices(cb: () => void): () => void {
+  if (typeof window === "undefined" || !window.speechSynthesis) {
+    return () => {};
+  }
+  window.speechSynthesis.addEventListener("voiceschanged", cb);
+  return () => window.speechSynthesis.removeEventListener("voiceschanged", cb);
+}
+
+/**
  * Speak learner-language text aloud — Mandarin unless `lang` says
  * otherwise. rate < 1 slows it down for learners. onDone fires when the
  * utterance finishes OR is interrupted — callers must check they still
@@ -102,7 +120,16 @@ export function speak(
   const wanted =
     opts?.voiceName ?? (isMandarin ? getPreferredVoiceName() : null);
   const chosen =
-    (wanted ? voices.find((v) => v.name === wanted) : undefined) ?? voices[0];
+    (wanted ? voices.find((v) => v.name === wanted) : undefined) ??
+    voices[0] ??
+    // No voice for this language at all. Never leave the choice to the
+    // browser: its default can be ANY installed language, and a Chinese
+    // default reading Spanish came out as convincing-sounding Mandarin
+    // (a real bug report). An English voice mangles the accent but stays
+    // recognisably the right words. Mandarin keeps the old behaviour —
+    // hanzi through an English voice is worse than the default, and the
+    // grown-up VoicePicker already surfaces missing zh voices.
+    (isMandarin ? undefined : voicesFor("en")[0]);
   if (chosen) u.voice = chosen;
   if (opts?.onDone) {
     u.onend = opts.onDone;

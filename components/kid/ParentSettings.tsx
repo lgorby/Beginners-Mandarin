@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { LANGUAGES } from "@/lib/languages";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
+import { hasVoiceFor, subscribeVoices } from "@/lib/speech";
 import { setPinyinVisible } from "@/lib/pinyinPref";
 import { setGentleTones } from "@/lib/tonePref";
 import { usePinyinVisible } from "./usePinyinVisible";
@@ -15,6 +17,15 @@ export default function ParentSettings() {
   const visible = usePinyinVisible();
   const gentle = useGentleTones("kid");
   const lang = useKidLang();
+  const language = LANGUAGES[lang];
+  // Voices load async in some browsers; the voiceschanged subscription
+  // re-reads once they arrive. Server renders assume the voice exists so
+  // the warning never flashes on a healthy machine.
+  const voiceInstalled = useSyncExternalStore(
+    subscribeVoices,
+    () => hasVoiceFor(language.speechLang),
+    () => true
+  );
 
   return (
     <>
@@ -43,6 +54,16 @@ export default function ParentSettings() {
                 <LangSwitch />
               </div>
             </div>
+
+            {language.voicePack && !voiceInstalled && (
+              <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                🔇 No {language.name} voice is installed, so a stand-in
+                voice reads the words — they will sound wrong until one is
+                added. In Windows: Settings → Time &amp; Language → Speech
+                → Add voices → <strong>{language.voicePack}</strong>, then
+                restart the browser.
+              </p>
+            )}
 
             {lang === "zh" && (
               <>
