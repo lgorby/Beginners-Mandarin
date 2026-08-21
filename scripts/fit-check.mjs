@@ -145,11 +145,36 @@ for (const vp of VIEWPORTS) {
       await rpc(ws, "Runtime.evaluate", { expression: p.click });
       await sleep(500);
     }
-    const res = await rpc(ws, "Runtime.evaluate", {
-      expression: MEASURE,
-      returnByValue: true,
-    });
-    const m = JSON.parse(res.result.value);
+    // Wait for hydration before measuring: until React hydrates and
+    // Paged's first measurement commits, the server HTML shows an
+    // overflowing box with no ‹ › controls — indistinguishable from a
+    // broken pager, and a fixed delay races it. Every Paged root stamps
+    // data-paged-ready in the same commit as its first measurement, so
+    // "all roots ready" is the signal. A page that never becomes ready
+    // falls through after ~5s and is reported broken, which it is.
+    for (let tries = 0; tries < 20; tries++) {
+      const ready = await rpc(ws, "Runtime.evaluate", {
+        expression: `document.readyState === 'complete' && [...document.querySelectorAll('[data-paged-root]')].every(r => r.hasAttribute('data-paged-ready'))`,
+        returnByValue: true,
+      });
+      if (ready.result.value === true) break;
+      await sleep(250);
+    }
+    // Then measure until two consecutive samples agree, so late layout
+    // shifts (fonts, images) cannot smear a single sample either.
+    let m = null;
+    let prev = null;
+    for (let tries = 0; tries < 12; tries++) {
+      const res = await rpc(ws, "Runtime.evaluate", {
+        expression: MEASURE,
+        returnByValue: true,
+      });
+      const sig = res.result.value;
+      m = JSON.parse(sig);
+      if (sig === prev) break;
+      prev = sig;
+      await sleep(250);
+    }
     total++;
     const bits = [];
     if (m.page > 2) {
