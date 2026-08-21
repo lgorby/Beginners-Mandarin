@@ -2,15 +2,16 @@
 
 A web app that teaches Mandarin Chinese from absolute zero — and, on the
 kids' path, American (Latin American) Spanish too — with sound, speech, and
-visuals throughout. Opening the app puts you at a front door with two ways
-in and a language chooser for the kids' path.
+visuals throughout. Opening the app puts you at a front door with one big
+door per kids' language and a quieter grown-up door below.
 
 ## 🧒 The kids' path (`/learn`)
 
-A guided route for a child aged roughly 5–11, in the language chosen on the
-front door (🇨🇳 中文 or 🇲🇽 Español). Each language has its own ten lessons
-and its own stars; both carry one pictured word forward into a spoken
-sentence, one screen at a time:
+A guided route for a child aged roughly 5–11, in the language whose door
+they tap on the front page (🇨🇳 中文 in red, 🇲🇽 Español in green — the tap
+IS the language choice). Each language has its own ten lessons and its own
+stars; both carry one pictured word forward into a spoken sentence, one
+screen at a time:
 
     你  →  你好  →  我喝茶  →  你喝茶吗？
     hola  →  un gato  →  yo bebo té  →  ¿tú quieres té?
