@@ -368,6 +368,14 @@ type RecognitionCtor = new () => SpeechRecognition;
 
 function recognitionCtor(): RecognitionCtor | undefined {
   if (typeof window === "undefined") return undefined;
+  // Recognition needs a secure context (https or localhost). Over
+  // plain-HTTP LAN — a phone testing against a dev PC — the
+  // constructor exists but the microphone can never open: start() is
+  // accepted and no event ever fires, so the UI would pulse at
+  // "getting ready…" until the watchdog. Report unsupported instead,
+  // and every mic surface shows its honest fallback. The explicit
+  // `=== false` keeps test DOMs (no isSecureContext at all) supported.
+  if (window.isSecureContext === false) return undefined;
   const w = window as unknown as {
     SpeechRecognition?: RecognitionCtor;
     webkitSpeechRecognition?: RecognitionCtor;
