@@ -1,8 +1,8 @@
 import Link from "next/link";
-import HanziStroke from "@/components/HanziStroke";
 import Panes from "@/components/Panes";
 import PinyinText from "@/components/PinyinText";
 import SpeakButton from "@/components/SpeakButton";
+import StrokeExplorer from "@/components/StrokeExplorer";
 
 // The 8 basic stroke types every character is built from.
 // `path` is a small SVG sketch of the stroke's shape.
@@ -59,55 +59,11 @@ export default function StrokesPage() {
         <strong>components that carry meaning</strong>.
       </p>
       <p className="short-hide mb-3 text-sm text-zinc-500">
-        Almost every line in every character is one of these eight. Tap 🔊 to
-        hear each stroke&apos;s Chinese name, and ▶ Animate to watch the example
-        character being written.
+        Almost every line in every character is one of these eight. Tap a
+        stroke to hear its Chinese name and watch an example character being
+        written — or trace it yourself.
       </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {STROKES.map((s) => (
-          <div
-            key={s.zh}
-            className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <svg
-              viewBox="0 0 100 100"
-              className="h-14 w-14 shrink-0 rounded-xl bg-zinc-50 dark:bg-zinc-800"
-              aria-hidden
-            >
-              <path
-                d={s.path}
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div className="min-w-0 flex-1 basis-44">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-2xl" lang="zh-CN">
-                  {s.zh}
-                </span>
-                <PinyinText pinyin={s.pinyin} className="font-medium" />
-                <span className="text-sm text-zinc-500">{s.en}</span>
-                <SpeakButton text={s.zh} size="sm" />
-              </div>
-              <p className="text-xs text-zinc-500">{s.how}</p>
-              <p className="mt-1 text-xs text-zinc-400">
-                See it in:{" "}
-                <span
-                  lang="zh-CN"
-                  className="text-base text-zinc-600 dark:text-zinc-300"
-                >
-                  {s.example}
-                </span>{" "}
-                ({s.exEn})
-              </p>
-            </div>
-            <HanziStroke char={s.example} size={90} />
-          </div>
-        ))}
-      </div>
+      <StrokeExplorer strokes={STROKES} />
     </section>
   );
 

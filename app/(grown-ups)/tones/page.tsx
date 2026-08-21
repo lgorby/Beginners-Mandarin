@@ -53,7 +53,7 @@ export default function TonesPage() {
   useArrowNav(undefined, nextQuiz);
 
   const lesson = (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <p className="text-sm text-zinc-600 sm:text-base dark:text-zinc-300">
         In Mandarin,{" "}
         <strong>the pitch of your voice changes the meaning of a word</strong>.
@@ -72,7 +72,7 @@ export default function TonesPage() {
             key={m.zh}
             type="button"
             onClick={() => speak(m.zh, { rate: 0.7 })}
-            className="rounded-2xl border border-zinc-200 bg-white p-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-95 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-2xl border border-zinc-200 bg-white p-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-95 sm:p-3 dark:border-zinc-800 dark:bg-zinc-900"
           >
             <div
               className="font-mono text-xl sm:text-2xl"

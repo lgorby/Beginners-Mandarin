@@ -65,7 +65,7 @@ export default function Home() {
           Hear every word spoken aloud, practice with your microphone, learn the
           four tones, and write real characters — all in your browser, free.
         </p>
-        <div className="mt-3 flex justify-center gap-3 sm:mt-6">
+        <div className="mt-3 flex justify-center gap-3 sm:mt-4">
           <Link
             href="/tones"
             className="rounded-full bg-red-600 px-5 py-2 font-semibold text-white transition hover:bg-red-700 sm:px-6 sm:py-3"

@@ -29,7 +29,9 @@ export default async function LessonPage({
         {lesson.subtitle} · Tap 🔊 to hear each word, 🐢 for slow speed. Say it
         out loud after the audio — every time.
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+      {/* xl fits six across, so a six-word lesson is one row on a laptop —
+          rows are what a 640px-tall viewport cannot afford. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
         {words.map((w) => (
           <WordCard key={w.zh} word={w} />
         ))}
