@@ -14,11 +14,37 @@ import { usePinyinVisible } from "./usePinyinVisible";
  * composes it rather than reimplementing it.
  */
 
-const SIZES = {
-  sm: { box: "h-20 w-20", pic: 48, text: "text-xl" },
-  md: { box: "h-28 w-28", pic: 64, text: "text-2xl" },
-  lg: { box: "h-56 w-56", pic: 144, text: "text-6xl" },
+/**
+ * Tile dimensions — the ONE place they are defined, so every step and
+ * the blank slot in SentenceRow scale together.
+ *
+ * Sized against the viewport HEIGHT, not width: a step has to fit
+ * between the instruction pill and the Continue button, and it is height
+ * that runs out first (a 1366x768 laptop in landscape leaves ~600px; a
+ * phone in landscape leaves ~390px). clamp() keeps the rem floor for
+ * fat-finger targets and the rem ceiling so tiles never balloon on a
+ * 1080p desktop. `container-type: size` on the box lets the emoji
+ * fallback scale with it (see below).
+ */
+export const SIZES = {
+  sm: {
+    box: "h-[clamp(2.75rem,9dvh,5rem)] w-[clamp(2.75rem,9dvh,5rem)]",
+    pic: 48,
+    text: "text-[clamp(0.8125rem,2.2dvh,1.25rem)]",
+  },
+  md: {
+    box: "h-[clamp(3.5rem,13dvh,7rem)] w-[clamp(3.5rem,13dvh,7rem)]",
+    pic: 64,
+    text: "text-[clamp(0.9375rem,3dvh,1.5rem)]",
+  },
+  lg: {
+    box: "h-[clamp(4.5rem,24dvh,14rem)] w-[clamp(4.5rem,24dvh,14rem)]",
+    pic: 144,
+    text: "text-[clamp(1.5rem,6dvh,3.75rem)]",
+  },
 } as const;
+
+export type TileSize = keyof typeof SIZES;
 
 export default function PicTile({
   wordKey,
@@ -31,7 +57,7 @@ export default function PicTile({
 }: {
   /** The word's text — its key in WORDS. */
   wordKey: string;
-  size?: keyof typeof SIZES;
+  size?: TileSize;
   onClick?: () => void;
   selected?: boolean;
   disabled?: boolean;
@@ -45,7 +71,10 @@ export default function PicTile({
   const s = SIZES[size];
 
   // A long Spanish word ("estudiante") cannot take hanzi-sized type.
-  const textSize = word.text.length > 4 && size === "lg" ? "text-4xl" : s.text;
+  const textSize =
+    word.text.length > 4 && size === "lg"
+      ? "text-[clamp(1.125rem,4dvh,2.25rem)]"
+      : s.text;
 
   return (
     <button
@@ -56,15 +85,20 @@ export default function PicTile({
         if (speakOnClick) speakWord(word.text);
         onClick?.();
       }}
-      className={`flex flex-col items-center justify-center gap-1 rounded-3xl border-4 bg-white p-2 transition active:scale-95 disabled:opacity-40 dark:bg-zinc-900 ${
+      className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-3xl border-4 bg-white p-1.5 transition active:scale-95 disabled:opacity-40 sm:gap-1 sm:p-2 dark:bg-zinc-900 ${
         selected
           ? "border-red-500 shadow-lg"
           : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-700"
       }`}
     >
-      <span className={`flex ${s.box} items-center justify-center`}>
+      {/* container-type:size makes the box a query container, so the
+          emoji fallback can be sized in cqh and shrink with the tile —
+          a fixed px font-size would overflow a clamped-down box. */}
+      <span
+        className={`flex ${s.box} items-center justify-center [container-type:size]`}
+      >
         {broken ? (
-          <span style={{ fontSize: s.pic }}>{word.emoji}</span>
+          <span className="text-[70cqh] leading-none">{word.emoji}</span>
         ) : (
           <Image
             src={`/pics/${word.id}.svg`}
@@ -73,6 +107,7 @@ export default function PicTile({
             height={s.pic}
             onError={() => setBroken(true)}
             unoptimized
+            className="h-full w-full object-contain"
           />
         )}
       </span>
