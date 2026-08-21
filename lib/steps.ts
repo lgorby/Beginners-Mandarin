@@ -3,6 +3,7 @@
 // lesson is a data edit in lib/curriculum.ts — never a change here.
 
 import {
+  getWord,
   lessonById,
   lessonIndex,
   wordsTaughtBefore,
@@ -113,7 +114,9 @@ export function buildSteps(lessonId: string): Step[] {
   // 1 & 2. Meet each new word, say it, and MATCH after every second one.
   lesson.newWords.forEach((word, i) => {
     steps.push({ kind: "MEET", word });
-    steps.push({ kind: "SAY", words: [word], en: "" });
+    // A single-word SAY shows the word's own gloss — "soy" with nothing
+    // under it left the learner saying sounds they couldn't place.
+    steps.push({ kind: "SAY", words: [word], en: getWord(word).en });
     metThisLesson.push(word);
 
     const isCheckpoint = (i + 1) % MATCH_EVERY === 0;

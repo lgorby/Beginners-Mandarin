@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LESSONS, lessonsFor } from "@/lib/curriculum";
+import { LESSONS, getWord, lessonsFor } from "@/lib/curriculum";
 import { LANG_CODES } from "@/lib/languages";
 import { STEP_COPY, buildSteps, type Step } from "@/lib/steps";
 
@@ -80,6 +80,17 @@ describe("buildSteps", () => {
         expect(step.answer).toBe(step.sentence[step.blankAt]);
         expect(step.choices).toContain(step.answer);
         expect(new Set(step.choices).size).toBe(step.choices.length);
+      }
+    }
+  });
+
+  it("glosses a single-word SAY with the word's own meaning", () => {
+    for (const lesson of LESSONS) {
+      for (const step of stepsFor(lesson.id)) {
+        if (step.kind !== "SAY" || step.words.length !== 1) continue;
+        expect(step.en, `${lesson.id}: ${step.words[0]}`).toBe(
+          getWord(step.words[0]).en
+        );
       }
     }
   });
