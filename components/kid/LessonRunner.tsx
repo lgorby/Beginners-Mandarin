@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Paged from "@/components/Paged";
 import BuildStep from "./steps/BuildStep";
@@ -16,13 +16,32 @@ import {
   getProgressSnapshot,
   saveProgress,
 } from "@/lib/progress";
+import {
+  clearResume,
+  getResumeServerSnapshot,
+  getResumeSnapshot,
+  saveResume,
+  subscribeResume,
+} from "@/lib/resume";
 import { setKidLang } from "@/lib/langPref";
 
 export default function LessonRunner({ lessonId }: { lessonId: string }) {
   const steps = useMemo(() => buildSteps(lessonId), [lessonId]);
-  const [index, setIndex] = useState(0);
-  const [cleanMatches, setCleanMatches] = useState(true);
-  const [allSpoken, setAllSpoken] = useState(true);
+  // The step index and star flags live in the resume bookmark, not in
+  // useState, so closing the app mid-lesson comes back to the same step.
+  // The server snapshot is null, so the first paint shows step one and
+  // useSyncExternalStore moves to the saved step right after hydration.
+  const resume = useSyncExternalStore(
+    subscribeResume,
+    getResumeSnapshot,
+    getResumeServerSnapshot,
+  );
+  // A bookmark for a different lesson is someone else's place, not ours.
+  const here = resume?.lessonId === lessonId ? resume : null;
+  // Clamp: a curriculum edit can shorten a lesson under a saved bookmark.
+  const index = Math.min(here?.step ?? 0, steps.length - 1);
+  const cleanMatches = here?.cleanMatches ?? true;
+  const allSpoken = here?.allSpoken ?? true;
   const [stars, setStars] = useState<number | null>(null);
 
   const lesson = lessonById(lessonId)!;
@@ -36,20 +55,21 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
 
   const onDone = (r: { correct: boolean; spoken: boolean }) => {
     const step = steps[index];
-    if (!r.correct) setCleanMatches(false);
-    if (step.kind === "SAY" && !r.spoken) setAllSpoken(false);
+    const clean = cleanMatches && r.correct;
+    const spoken = allSpoken && (step.kind !== "SAY" || r.spoken);
 
     if (index + 1 < steps.length) {
-      setIndex(index + 1);
+      saveResume({
+        lessonId,
+        step: index + 1,
+        cleanMatches: clean,
+        allSpoken: spoken,
+      });
       return;
     }
-    // This is the last step, so fold its result in directly — the state
-    // updates above will not have applied yet.
-    const earned = awardStars({
-      cleanMatches: r.correct && cleanMatches,
-      allSpoken: (step.kind !== "SAY" || r.spoken) && allSpoken,
-    });
+    const earned = awardStars({ cleanMatches: clean, allSpoken: spoken });
     saveProgress(completeLesson(getProgressSnapshot(), lessonId, earned));
+    clearResume(); // finished — nothing left to come back to
     setStars(earned);
   };
 
@@ -91,7 +111,10 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
   const progress = Math.round((index / steps.length) * 100);
   // Going back never rewinds results: cleanMatches/allSpoken keep what
   // already happened, and stars only ever go up anyway.
-  const onBack = index > 0 ? () => setIndex(index - 1) : undefined;
+  const onBack =
+    index > 0
+      ? () => saveResume({ lessonId, step: index - 1, cleanMatches, allSpoken })
+      : undefined;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

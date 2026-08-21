@@ -71,6 +71,53 @@ function pickDistractors(
 }
 
 /**
+ * Answer + distractors, with the answer's position rotating by `seed`.
+ * `[answer, ...distractors]` put the right tile first in every exercise,
+ * and a child learns "tap the first picture" in about three lessons.
+ * Deterministic, so the server and client render the same tiles.
+ */
+function spreadChoices(
+  answer: string,
+  distractors: string[],
+  seed: number
+): string[] {
+  const choices = [...distractors];
+  choices.splice(seed % (distractors.length + 1), 0, answer);
+  return choices;
+}
+
+/**
+ * Warm-up review: earlier words come back for real use — one to
+ * recognise (MATCH), one to say (SAY) — not only as wrong answers.
+ *
+ * The MATCH word walks forward one taught word per lesson while the
+ * course adds two or three, so each word's revisits arrive at growing
+ * intervals — cheap spaced repetition with no stored schedule, which
+ * keeps buildSteps pure. The SAY word is the newest earlier word: the
+ * one taught most recently is the one still settling.
+ */
+function reviewSteps(
+  lessonIdx: number,
+  taught: string[],
+  recent: string[]
+): Step[] {
+  if (taught.length === 0) return [];
+  const steps: Step[] = [];
+  const matchWord = taught[(lessonIdx - 1) % taught.length];
+  const distractors = pickDistractors(matchWord, recent, MATCH_CHOICES - 1);
+  if (distractors.length > 0) {
+    steps.push({
+      kind: "MATCH",
+      answer: matchWord,
+      choices: spreadChoices(matchWord, distractors, lessonIdx),
+    });
+  }
+  const sayWord = recent.find((zh) => zh !== matchWord) ?? matchWord;
+  steps.push({ kind: "SAY", words: [sayWord], en: getWord(sayWord).en });
+  return steps;
+}
+
+/**
  * The words this lesson's own sentences put in a given slot. These make
  * the best distractors for a SWAP: they genuinely fit the sentence
  * shape, so choosing between them is a real decision rather than a
@@ -104,11 +151,14 @@ export function buildSteps(lessonId: string): Step[] {
   if (!lesson) throw new Error(`No lesson with id "${lessonId}"`);
   const index = lessonIndex(lessonId);
 
+  const taught = [...wordsTaughtBefore(lesson.lang, index)];
   // Most recently taught first: recent words are the ones worth confusing
   // the answer with, and it stops lesson 1's words being the distractor in
   // every exercise for the rest of the course.
-  const recent = [...wordsTaughtBefore(lesson.lang, index)].reverse();
-  const steps: Step[] = [];
+  const recent = [...taught].reverse();
+
+  // 0. Warm up on earlier lessons' words before anything new.
+  const steps: Step[] = reviewSteps(index, taught, recent);
   const metThisLesson: string[] = [];
 
   // 1 & 2. Meet each new word, say it, and MATCH after every second one.
@@ -129,7 +179,11 @@ export function buildSteps(lessonId: string): Step[] {
     const pool = [...metThisLesson, ...recent];
     const distractors = pickDistractors(word, pool, MATCH_CHOICES - 1);
     if (distractors.length < MATCH_CHOICES - 1) return; // too early to test
-    steps.push({ kind: "MATCH", answer: word, choices: [word, ...distractors] });
+    steps.push({
+      kind: "MATCH",
+      answer: word,
+      choices: spreadChoices(word, distractors, index + steps.length),
+    });
   });
 
   // 3. Ladder the build sentence: one BUILD per prefix of length 2..N.
@@ -162,7 +216,7 @@ export function buildSteps(lessonId: string): Step[] {
       sentence: swap.words,
       blankAt,
       answer,
-      choices: [answer, ...distractors],
+      choices: spreadChoices(answer, distractors, index + steps.length),
       en: swap.en,
     });
   }

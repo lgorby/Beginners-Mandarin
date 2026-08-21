@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { LANGUAGES } from "@/lib/languages";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
+import { clearResume } from "@/lib/resume";
 import {
   effectiveVoiceFor,
   normTag,
@@ -188,6 +189,7 @@ export default function ParentSettings() {
                   return;
                 localStorage.removeItem(PROGRESS_KEY);
                 reloadProgress(); // drop the cached snapshot; the map re-renders
+                clearResume(); // and forget any place held inside a lesson
                 setOpen(false);
               }}
               className="mt-3 w-full rounded-2xl px-4 py-3 text-sm text-red-600"
