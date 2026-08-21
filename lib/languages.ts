@@ -44,6 +44,20 @@ export interface Language {
    * "grathias", which is not the American Spanish being taught.
    */
   wrongVarietyVoices?: string[];
+  /**
+   * This language's grown-up section — where the floating Voice picker
+   * actually lives (bottom-right on those pages, never on the kid path).
+   * ParentSettings links here so the wrong-variety warning it shows
+   * points somewhere a parent can reach, instead of naming a control
+   * only the Mandarin section has a link to.
+   */
+  grownUpsPath: string;
+  /**
+   * Label for the link to grownUpsPath from the kid-path settings sheet.
+   * Must hold for every language it's shown to — no naming a feature
+   * (like Mandarin's writing practice) the other course doesn't have.
+   */
+  grownUpsLabel: string;
 }
 
 export const LANGUAGES: Record<LangCode, Language> = {
@@ -55,6 +69,8 @@ export const LANGUAGES: Record<LangCode, Language> = {
     speechLang: "zh-CN",
     recognitionLang: "zh-CN",
     joiner: "",
+    grownUpsPath: "/mandarin-grown-ups",
+    grownUpsLabel: "Tones, dictionary, writing & more →",
   },
   es: {
     code: "es",
@@ -71,6 +87,8 @@ export const LANGUAGES: Record<LangCode, Language> = {
     // ("Latin America" as a region tag) are the common installed ones.
     preferredVoices: ["es-US", "es-419"],
     wrongVarietyVoices: ["es-ES"],
+    grownUpsPath: "/spanish-grown-ups",
+    grownUpsLabel: "Dictionary, practice & more →",
   },
 };
 

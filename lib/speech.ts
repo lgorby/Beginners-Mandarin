@@ -20,7 +20,14 @@ export function getMandarinVoices(): SpeechSynthesisVoice[] {
   return cachedVoices ?? [];
 }
 
-const normTag = (s: string) => s.toLowerCase().replace("_", "-");
+/**
+ * Fold a BCP-47 tag to a comparable form: lowercase, and "_" region
+ * separators (some browsers report "es_ES") normalised to "-". Exported
+ * so every place that compares two tags — the picker components and
+ * the settings sheet included — folds them the same way; a comparison
+ * that normalises only one side of a match can silently never fire.
+ */
+export const normTag = (s: string) => s.toLowerCase().replace("_", "-");
 
 /**
  * Order voices best-first: `prefer` tags in their given order, then any
@@ -48,9 +55,9 @@ export function rankVoices<T extends { lang: string }>(
  * Voices for a BCP-47 tag, best match first: the requested region, then
  * `prefer` in order, then other same-language regions, with `avoid`
  * varieties last. Unlike the Mandarin list this is not cached — it is
- * only read at speak() time.
+ * read at speak() time (and by the Spanish VoicePicker).
  */
-function voicesFor(
+export function voicesFor(
   lang: string,
   prefer: string[] = [],
   avoid: string[] = []
@@ -68,20 +75,29 @@ function voicesFor(
 
 // --- Voice preference (persisted, used by every speak() call) -----------
 
-const VOICE_KEY = "mandarin-voice-v1";
+// One preference per language, so picking a Spanish voice can never make
+// a Chinese voice read Spanish (or vice versa). The zh key predates the
+// per-language split — renaming it would drop saved choices.
+const VOICE_KEYS: Record<string, string> = {
+  zh: "mandarin-voice-v1",
+  es: "spanish-voice-v1",
+};
 
-export function getPreferredVoiceName(): string | null {
-  if (typeof window === "undefined") return null;
+export function getPreferredVoiceName(langPrefix = "zh"): string | null {
+  const key = VOICE_KEYS[langPrefix];
+  if (!key || typeof window === "undefined") return null;
   try {
-    return localStorage.getItem(VOICE_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-export function setPreferredVoiceName(name: string) {
+export function setPreferredVoiceName(name: string, langPrefix = "zh") {
+  const key = VOICE_KEYS[langPrefix];
+  if (!key) return;
   try {
-    localStorage.setItem(VOICE_KEY, name);
+    localStorage.setItem(key, name);
   } catch {
     // storage unavailable — preference just won't persist
   }
@@ -90,12 +106,23 @@ export function setPreferredVoiceName(name: string) {
 /**
  * Guess a voice's gender from its name. Reliable for Microsoft's Chinese
  * voices (male names start with Yun- or are Kangkang/Danny; female start
- * with Xiao- or are Huihui/Yaoyao/…) and Google's (female).
+ * with Xiao- or are Huihui/Yaoyao/…), Microsoft's Spanish voices (given
+ * names like Raul/Sabina, including the Edge neural set), and Google's
+ * (female).
  */
 export function guessVoiceGender(name: string): "male" | "female" | null {
   const n = name.toLowerCase();
-  if (/(kangkang|danny|wanlung|zhiwei|yun[a-z]+)/.test(n)) return "male";
-  if (/(xiao[a-z]+|huihui|yaoyao|hanhan|tracy|hiugaai|hiumaan|hsiao[a-z]+|google)/.test(n))
+  if (
+    /(kangkang|danny|wanlung|zhiwei|yun[a-z]+|raul|pablo|jorge|alonso|alvaro|álvaro|tomas|tomás|gonzalo|luciano|gerardo|liberto|saul|saúl)/.test(
+      n
+    )
+  )
+    return "male";
+  if (
+    /(xiao[a-z]+|huihui|yaoyao|hanhan|tracy|hiugaai|hiumaan|hsiao[a-z]+|sabina|helena|laura|dalia|paloma|elvira|camila|salome|salomé|elena|ximena|larissa|catalina|sofia|sofía|google)/.test(
+      n
+    )
+  )
     return "female";
   return null;
 }
@@ -120,15 +147,77 @@ export function hasVoiceFor(lang: string): boolean {
 }
 
 /**
- * The voice speak() would actually use for a language, so settings can
- * warn when the best available is still the wrong variety.
+ * The voice a ranked list will actually be spoken with: the saved
+ * preference if it is still installed, otherwise the best-ranked one.
+ * Exists as one function so speak() and the settings warning can never
+ * disagree about which voice is in use — they did, and settings reported
+ * a Latin American voice while speak() used the Castilian one a parent
+ * had picked.
  */
-export function bestVoiceFor(
+export function pickVoice<T extends { name: string }>(
+  voices: T[],
+  preferredName?: string | null
+): T | undefined {
+  return (
+    (preferredName ? voices.find((v) => v.name === preferredName) : undefined) ??
+    voices[0]
+  );
+}
+
+/**
+ * The voice speak() would actually use for a language, saved preference
+ * included — what the learner will really hear, which is the only honest
+ * thing to build a wrong-variety warning on. This replaces bestVoiceFor(),
+ * which promised the same thing and delivered the ranking alone, so
+ * settings reported a Latin American voice while the app spoke Castilian.
+ */
+export function effectiveVoiceFor(
   lang: string,
   prefer: string[] = [],
   avoid: string[] = []
 ): SpeechSynthesisVoice | undefined {
-  return voicesFor(lang, prefer, avoid)[0];
+  return pickVoice(
+    voicesFor(lang, prefer, avoid),
+    getPreferredVoiceName(normTag(lang).split("-")[0])
+  );
+}
+
+/**
+ * The tag of the best-ranked voice for a language on its own — the same
+ * ranking effectiveVoiceFor() draws from, but blind to any saved
+ * preference. Diffing this against effectiveVoiceFor()'s tag is how the
+ * kid-path warning tells "nothing better is installed" apart from "a
+ * grown-up picked the wrong one on purpose" in the voice picker.
+ */
+export function rankedVoiceTag(
+  lang: string,
+  prefer: string[] = [],
+  avoid: string[] = []
+): string {
+  const v = voicesFor(lang, prefer, avoid)[0];
+  return v ? normTag(v.lang) : "";
+}
+
+export type VoiceWarningKind = "none" | "install" | "picker";
+
+/**
+ * Which wrong-variety warning (if any) a kid-path parent needs, given the
+ * tag speak() would actually use and the tag the ranking alone would have
+ * picked. They differ only when a saved preference overrides a ranking
+ * that would have picked correctly — installing a voice pack cannot fix
+ * that case, only reopening the voice picker can, so the two need
+ * different remedies. Pure: takes tags, not voices, so it never touches
+ * window and can be unit tested directly.
+ */
+export function voiceWarningKind(
+  chosenTag: string,
+  rankedTag: string,
+  avoid: string[]
+): VoiceWarningKind {
+  const a = avoid.map(normTag);
+  const isAvoided = (tag: string) => tag !== "" && a.includes(normTag(tag));
+  if (!isAvoided(chosenTag)) return "none";
+  return isAvoided(rankedTag) ? "install" : "picker";
 }
 
 /** Subscribe to the voice list changing, shaped for useSyncExternalStore. */
@@ -144,8 +233,8 @@ export function subscribeVoices(cb: () => void): () => void {
  * Speak learner-language text aloud — Mandarin unless `lang` says
  * otherwise. rate < 1 slows it down for learners. onDone fires when the
  * utterance finishes OR is interrupted — callers must check they still
- * want to act (e.g. the hands-free mic open). The persisted voice
- * preference is a Mandarin voice, so it only applies to zh.
+ * want to act (e.g. the hands-free mic open). Each language's persisted
+ * voice preference (if any) applies only to that language.
  */
 export function speak(
   text: string,
@@ -171,10 +260,9 @@ export function speak(
     ? getMandarinVoices()
     : voicesFor(lang, opts?.voicePrefer, opts?.voiceAvoid);
   const wanted =
-    opts?.voiceName ?? (isMandarin ? getPreferredVoiceName() : null);
+    opts?.voiceName ?? getPreferredVoiceName(normTag(lang).split("-")[0]);
   const chosen =
-    (wanted ? voices.find((v) => v.name === wanted) : undefined) ??
-    voices[0] ??
+    pickVoice(voices, wanted) ??
     // No voice for this language at all. Never leave the choice to the
     // browser: its default can be ANY installed language, and a Chinese
     // default reading Spanish came out as convincing-sounding Mandarin

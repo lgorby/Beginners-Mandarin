@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Paged from "@/components/Paged";
 import BuildStep from "./steps/BuildStep";
 import MatchStep from "./steps/MatchStep";
 import MeetStep from "./steps/MeetStep";
@@ -54,10 +55,14 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
 
   if (stars !== null) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 text-center">
-        <p className="text-6xl">🎉</p>
-        <h1 className="text-3xl font-bold">{lesson.title}</h1>
-        <p className="text-5xl" aria-label={`${stars} out of 3 stars`}>
+      <Paged className="min-h-0 flex-1 px-4">
+        <div className="my-auto flex flex-col items-center gap-4 text-center sm:gap-8">
+        <p className="text-4xl sm:text-6xl">🎉</p>
+        <h1 className="text-2xl font-bold sm:text-3xl">{lesson.title}</h1>
+        <p
+          className="text-3xl sm:text-5xl"
+          aria-label={`${stars} out of 3 stars`}
+        >
           {"⭐".repeat(stars)}
           <span className="opacity-20">{"⭐".repeat(3 - stars)}</span>
         </p>
@@ -65,19 +70,20 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
           {next && (
             <Link
               href={`/learn/${next.id}`}
-              className="rounded-full bg-red-600 px-8 py-5 text-xl font-bold text-white"
+              className="rounded-full bg-red-600 px-8 py-3 text-lg font-bold text-white sm:py-5 sm:text-xl"
             >
               Keep going →
             </Link>
           )}
           <Link
             href="/learn"
-            className="rounded-full border-4 border-zinc-200 px-8 py-4 text-lg font-semibold dark:border-zinc-700"
+            className="rounded-full border-4 border-zinc-200 px-8 py-2.5 font-semibold sm:py-4 sm:text-lg dark:border-zinc-700"
           >
             Back to the map
           </Link>
         </div>
-      </div>
+        </div>
+      </Paged>
     );
   }
 
@@ -88,16 +94,16 @@ export default function LessonRunner({ lessonId }: { lessonId: string }) {
   const onBack = index > 0 ? () => setIndex(index - 1) : undefined;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center gap-3 px-3 py-2 sm:px-4 sm:py-3">
         <Link
           href="/learn"
           aria-label="Back to the map"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 border-zinc-200 bg-white text-2xl font-bold shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-4 border-zinc-200 bg-white text-xl font-bold shadow-sm sm:h-12 sm:w-12 sm:text-2xl dark:border-zinc-700 dark:bg-zinc-900"
         >
           ←
         </Link>
-        <div className="h-4 flex-1 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+        <div className="h-3 flex-1 overflow-hidden rounded-full bg-zinc-200 sm:h-4 dark:bg-zinc-800">
           <div
             className="h-full rounded-full bg-green-500 transition-all"
             style={{ width: `${progress}%` }}

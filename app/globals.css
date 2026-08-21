@@ -24,3 +24,26 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/*
+ * Explanatory prose that earns its place on a laptop but costs more
+ * height than it is worth on a short screen (a phone in landscape has
+ * ~390px to spend). Applied to intros and tips only — never to a
+ * control, a label, or anything that carries the meaning of a word.
+ */
+@utility short-hide {
+  @media (max-height: 620px) {
+    display: none;
+  }
+}
+
+/*
+ * Whole nice-to-have BLOCKS (a preview grid, a decorative sample row) —
+ * a bigger thing than short-hide's sentence, so it gives up sooner. A
+ * 1366x768 laptop has ~640px of usable height and lands here.
+ */
+@utility compact-hide {
+  @media (max-height: 800px) {
+    display: none;
+  }
+}

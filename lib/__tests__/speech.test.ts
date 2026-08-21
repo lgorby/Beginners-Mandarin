@@ -1,5 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { bestCandidate, rankVoices, scoreMatch } from "@/lib/speech";
+import {
+  bestCandidate,
+  normTag,
+  pickVoice,
+  rankVoices,
+  scoreMatch,
+  voiceWarningKind,
+} from "@/lib/speech";
+
+describe("normTag", () => {
+  // The one predicate every BCP-47 comparison in the app goes through —
+  // VoicePicker and the kid-path settings sheet included — so a tag
+  // written with an underscore (some browsers report "es_ES") still
+  // matches one written with a hyphen.
+  it("lowercases the tag", () => {
+    expect(normTag("ES-mx")).toBe("es-mx");
+  });
+
+  it("folds an underscore region separator to a hyphen", () => {
+    expect(normTag("es_ES")).toBe("es-es");
+  });
+
+  it("agrees on both spellings of the same tag", () => {
+    expect(normTag("es_ES")).toBe(normTag("ES-es"));
+  });
+});
 
 describe("scoreMatch", () => {
   it("gives 100 for an exact match", () => {
@@ -100,5 +125,69 @@ describe("rankVoices", () => {
       "ES-us",
       "es_es",
     ]);
+  });
+});
+
+describe("pickVoice", () => {
+  // Ranked best-first, the way voicesFor() returns them: the Latin
+  // American voice this course wants, then the Castilian one it avoids.
+  const voices = [
+    { name: "Microsoft Dalia", lang: "es-MX" },
+    { name: "Microsoft Helena", lang: "es-ES" },
+  ];
+
+  it("uses the saved preference even when it is not the best-ranked voice", () => {
+    // This is the whole point: settings must be able to see the same
+    // wrong-variety choice that speak() will actually make.
+    expect(pickVoice(voices, "Microsoft Helena")?.name).toBe(
+      "Microsoft Helena"
+    );
+  });
+
+  it("falls back to the best-ranked voice when the saved one is uninstalled", () => {
+    expect(pickVoice(voices, "Microsoft Gone")?.name).toBe("Microsoft Dalia");
+  });
+
+  it("falls back to the best-ranked voice when nothing is saved", () => {
+    expect(pickVoice(voices, null)?.name).toBe("Microsoft Dalia");
+    expect(pickVoice(voices)?.name).toBe("Microsoft Dalia");
+  });
+
+  it("returns undefined when the system has no voices at all", () => {
+    expect(pickVoice([], "Microsoft Dalia")).toBeUndefined();
+  });
+});
+
+describe("voiceWarningKind", () => {
+  const AVOID = ["es-ES"];
+
+  it("warns nothing when the chosen voice isn't a wrong variety", () => {
+    expect(voiceWarningKind("es-MX", "es-MX", AVOID)).toBe("none");
+  });
+
+  it("warns nothing when no voice is installed at all", () => {
+    // The separate "no voice installed" notice covers this case; this
+    // function must not also fire for it.
+    expect(voiceWarningKind("", "", AVOID)).toBe("none");
+  });
+
+  it("says install a voice pack when even the best ranking is wrong-variety", () => {
+    // Nothing better is on the system — a saved preference can't be the
+    // cause, since the ranking would have picked the same voice anyway.
+    expect(voiceWarningKind("es-ES", "es-ES", AVOID)).toBe("install");
+  });
+
+  it("says open the voice picker when a saved preference overrode a better ranking", () => {
+    // The ranking would have picked es-MX; only a saved preference could
+    // have produced the Castilian choice actually in use.
+    expect(voiceWarningKind("es-ES", "es-MX", AVOID)).toBe("picker");
+  });
+
+  it("compares tags case-insensitively and across _ vs -", () => {
+    expect(voiceWarningKind("ES_es", "es-MX", AVOID)).toBe("picker");
+  });
+
+  it("never warns when the language has no wrong-variety voices (Mandarin)", () => {
+    expect(voiceWarningKind("zh-TW", "zh-CN", [])).toBe("none");
   });
 });

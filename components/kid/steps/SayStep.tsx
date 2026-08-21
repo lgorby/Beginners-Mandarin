@@ -40,7 +40,7 @@ export default function SayStep({
   const [listening, setListening] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [trouble, setTrouble] = useState<"none" | "unheard" | "blocked">(
-    "none"
+    "none",
   );
   const [attempt, setAttempt] = useState(0);
   const [toneHint, setToneHint] = useState(false);
@@ -55,9 +55,21 @@ export default function SayStep({
   const recRef = useRef<SpeechRecognition | null>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Hands-free listening is armed once per step; any manual tap (🎤 or
-  // 🔊) disarms it so the mic never opens against the child's actions.
+  // Hands-free listening is armed once per step; any manual tap — 🎤,
+  // the gloss replay, or a word tile — disarms it so the mic never opens
+  // against the child's actions. This matters more than it looks:
+  // speak() calls speechSynthesis.cancel() on entry, which fires the
+  // utterance-in-flight's onend — and the auto-speak's onDone is what
+  // opens the microphone. Without disarming, tapping a word mid-read
+  // would hand the child an open mic they never asked for.
   const autoArmed = useRef(true);
+  const disarm = useCallback(() => {
+    autoArmed.current = false;
+  }, []);
+  const replay = useCallback(() => {
+    disarm();
+    speakSentence(step.words, { question });
+  }, [disarm, step.words, question]);
 
   const listen = useCallback(() => {
     autoArmed.current = false;
@@ -96,7 +108,7 @@ export default function SayStep({
           // must never punish that. Also fetches the per-syllable report.
           try {
             const res = await fetch(
-              `/api/score?target=${encodeURIComponent(target)}&heard=${encodeURIComponent(best.candidates.join("|"))}`
+              `/api/score?target=${encodeURIComponent(target)}&heard=${encodeURIComponent(best.candidates.join("|"))}`,
             );
             if (res.ok) {
               const sound: {
@@ -133,7 +145,7 @@ export default function SayStep({
         setTrouble(
           ["not-allowed", "service-not-allowed", "audio-capture"].includes(code)
             ? "blocked"
-            : "unheard"
+            : "unheard",
         ),
       ended: () => {
         if (watchdog.current) clearTimeout(watchdog.current);
@@ -187,31 +199,37 @@ export default function SayStep({
       onBack={onBack}
       onContinue={() => onDone({ correct: true, spoken: score !== null })}
     >
+      {/* Tapping a tile already speaks that word (PicTile speaks on
+          click), so a separate 🔊 button was a second way to do what the
+          picture does. Whole-sentence replay is NOT redundant, though —
+          a tile says one word, and only speakSentence applies the
+          language's question intonation (Spanish ¿…?) — so it moved onto
+          the English gloss, which is on screen for every SAY step. */}
       <SentenceRow
         words={step.words}
         size={step.words.length > 2 ? "sm" : "lg"}
+        onWordTap={disarm}
       />
-      {step.en && <p className="text-xl text-zinc-500">{step.en}</p>}
-
-      <button
-        type="button"
-        onClick={() => {
-          autoArmed.current = false; // replaying must not open the mic
-          speakSentence(step.words, { question });
-        }}
-        className="rounded-full bg-red-50 px-6 py-4 text-3xl dark:bg-red-950"
-        aria-label="Hear it again"
-      >
-        🔊
-      </button>
+      {step.en && (
+        <button
+          type="button"
+          onClick={replay}
+          aria-label={`Hear it again: ${step.en}`}
+          className="rounded-full px-4 py-1.5 text-base text-zinc-500 transition active:scale-95 hover:bg-zinc-100 sm:text-xl dark:hover:bg-zinc-800"
+        >
+          {step.en} <span aria-hidden>🔊</span>
+        </button>
+      )}
 
       {supported ? (
         <button
           type="button"
           onClick={listen}
           disabled={listening}
-          className={`rounded-full px-10 py-6 text-4xl transition ${
-            listening ? "animate-pulse bg-red-600" : "bg-red-100 dark:bg-red-900"
+          className={`rounded-full px-6 py-3 text-2xl transition sm:px-10 sm:py-5 sm:text-4xl ${
+            listening
+              ? "animate-pulse bg-red-600"
+              : "bg-red-100 dark:bg-red-900"
           }`}
           aria-label="Say it into the microphone"
         >
@@ -220,14 +238,14 @@ export default function SayStep({
       ) : (
         // Recognition is Chrome/Edge-only and needs internet. The child
         // must never hit a wall because of their browser.
-        <p className="max-w-xs text-center text-lg text-zinc-500">
+        <p className="max-w-xs text-center text-base text-zinc-500 sm:text-lg">
           Say it out loud, then tap Next.
         </p>
       )}
 
       {listening && (
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-lg text-zinc-500">
+        <div className="flex flex-col items-center gap-1 sm:gap-2">
+          <p className="text-sm text-zinc-500 sm:text-lg">
             Attempt {attempt} ·{" "}
             {phase === "starting"
               ? "getting ready…"
@@ -252,14 +270,14 @@ export default function SayStep({
       )}
 
       {trouble !== "none" ? (
-        <p className="max-w-xs text-center text-lg text-zinc-500">
+        <p className="max-w-xs text-center text-sm text-zinc-500 sm:text-lg">
           {trouble === "blocked"
             ? "🔇 Ask a grown-up to switch on the microphone (the 🔒 by the address bar)"
             : "🙉 I didn't hear you — tap 🎤 and try again"}
         </p>
       ) : score !== null ? (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-2xl font-bold">
+        <div className="flex flex-col items-center gap-2 sm:gap-3">
+          <p className="text-lg font-bold sm:text-2xl">
             {score >= 90
               ? "🎉 Perfect!"
               : toneHint

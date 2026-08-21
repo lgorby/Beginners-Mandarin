@@ -4,7 +4,13 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { LANGUAGES } from "@/lib/languages";
 import { PROGRESS_KEY, reloadProgress } from "@/lib/progress";
-import { bestVoiceFor, subscribeVoices } from "@/lib/speech";
+import {
+  effectiveVoiceFor,
+  normTag,
+  rankedVoiceTag,
+  subscribeVoices,
+  voiceWarningKind,
+} from "@/lib/speech";
 import { setPinyinVisible } from "@/lib/pinyinPref";
 import { setGentleTones } from "@/lib/tonePref";
 import { usePinyinVisible } from "./usePinyinVisible";
@@ -18,41 +24,68 @@ export default function ParentSettings() {
   const gentle = useGentleTones("kid");
   const lang = useKidLang();
   const language = LANGUAGES[lang];
-  // The tag of the voice speak() would actually use ("" = none at all).
+  // The tag of the voice speak() would actually use ("" = none at all),
+  // the grown-up's saved choice included — a warning computed from the
+  // automatic ranking alone said "es-MX" while the app spoke es-ES.
   // Voices load async in some browsers; the voiceschanged subscription
   // re-reads once they arrive. Server renders assume the right voice
   // exists so no warning flashes on a healthy machine.
-  const bestVoiceTag = useSyncExternalStore(
+  const voiceTag = useSyncExternalStore(
     subscribeVoices,
-    () =>
-      bestVoiceFor(
+    () => {
+      const v = effectiveVoiceFor(
         language.speechLang,
         language.preferredVoices,
-        language.wrongVarietyVoices
-      )?.lang.toLowerCase().replace("_", "-") ?? "",
-    () => language.speechLang.toLowerCase()
+        language.wrongVarietyVoices,
+      );
+      return v ? normTag(v.lang) : "";
+    },
+    () => language.speechLang.toLowerCase(),
   );
-  const voiceInstalled = bestVoiceTag !== "";
-  // The best the system has is still a variety this course doesn't teach
-  // (a Castilian voice reading the American Spanish course).
-  const wrongVariety = Boolean(
-    language.wrongVarietyVoices?.some((t) => t.toLowerCase() === bestVoiceTag)
+  const voiceInstalled = voiceTag !== "";
+  // The best-ranked voice for this language, blind to any saved
+  // preference — diffed against voiceTag below to tell "nothing better
+  // is installed" apart from "a grown-up picked the wrong one on
+  // purpose" in the voice picker.
+  const rankedTag = useSyncExternalStore(
+    subscribeVoices,
+    () =>
+      rankedVoiceTag(
+        language.speechLang,
+        language.preferredVoices,
+        language.wrongVarietyVoices,
+      ),
+    () => language.speechLang.toLowerCase(),
+  );
+  // Which wrong-variety warning (if any) to show. Installing a voice
+  // pack can't fix a case where a grown-up's saved choice overrode a
+  // ranking that would have picked correctly — the two need different
+  // remedies, so the settings warning has to tell them apart.
+  const voiceWarning = voiceWarningKind(
+    voiceTag,
+    rankedTag,
+    language.wrongVarietyVoices ?? [],
   );
 
   return (
     <>
+      {/* Inline, not `fixed bottom-4 right-4`: floating there it sat on
+          top of whatever the primary action was on a short screen.
+          StarPath puts it in its header row instead. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Settings for grown-ups"
-        className="fixed bottom-4 right-4 rounded-full bg-white/90 p-3 text-xl shadow-lg dark:bg-zinc-800/90"
+        className="shrink-0 rounded-full bg-white/90 p-2 text-lg shadow-sm dark:bg-zinc-800/90"
       >
         ⚙️
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 dark:bg-zinc-900">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-2 sm:p-4">
+          {/* The sheet is the one thing here allowed its own scroll: on a
+              phone in landscape the voice warnings alone outrun 390px. */}
+          <div className="max-h-full w-full max-w-md overflow-y-auto rounded-3xl bg-white p-4 sm:p-6 dark:bg-zinc-900">
             <h2 className="text-xl font-bold">For grown-ups</h2>
 
             <div className="mt-4">
@@ -69,23 +102,36 @@ export default function ParentSettings() {
 
             {language.voicePack && !voiceInstalled && (
               <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                🔇 No {language.name} voice is installed, so a stand-in
-                voice reads the words — they will sound wrong until one is
-                added. In Windows: Settings → Time &amp; Language → Speech
-                → Add voices → <strong>{language.voicePack}</strong>, then
-                restart the browser.
+                🔇 No {language.name} voice is installed, so a stand-in voice
+                reads the words — they will sound wrong until one is added. In
+                Windows: Settings → Time &amp; Language → Speech → Add voices →{" "}
+                <strong>{language.voicePack}</strong>, then restart the browser.
               </p>
             )}
 
-            {language.voicePack && voiceInstalled && wrongVariety && (
+            {language.voicePack && voiceWarning === "install" && (
               <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                🗣️ Only a European {language.name} voice is installed, so
-                words sound Castilian (&ldquo;gracias&rdquo; like
-                &ldquo;grathias&rdquo;) — this course teaches Latin
-                American {language.name}. In Windows: Settings → Time
-                &amp; Language → Speech → Add voices →{" "}
-                <strong>{language.voicePack}</strong>, then restart the
-                browser.
+                🗣️ Only a European {language.name} voice is installed, so words
+                sound Castilian (&ldquo;gracias&rdquo; like
+                &ldquo;grathias&rdquo;) — this course teaches Latin American{" "}
+                {language.name}. In Windows: Settings → Time &amp; Language →
+                Speech → Add voices → <strong>{language.voicePack}</strong>,
+                then restart the browser.
+              </p>
+            )}
+
+            {language.voicePack && voiceWarning === "picker" && (
+              <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                🗣️ The {language.name} voice chosen in the Voice picker is a
+                European one, so words sound Castilian (&ldquo;gracias&rdquo;
+                like &ldquo;grathias&rdquo;) — this course teaches Latin
+                American {language.name}. The Voice picker sits bottom-right on
+                the grown-up pages (
+                <Link href={language.grownUpsPath} className="underline">
+                  open them below
+                </Link>
+                ) — choose a different voice there to fix it everywhere, the
+                kids&apos; lessons included.
               </p>
             )}
 
@@ -111,9 +157,9 @@ export default function ParentSettings() {
                   <span>
                     Gentle tones
                     <span className="block text-sm text-zinc-500">
-                      On by default — young children earn the win with the
-                      right sounds, and tones are coached playfully. Turn off
-                      to require correct tones for a &quot;Perfect&quot;.
+                      On by default — young children earn the win with the right
+                      sounds, and tones are coached playfully. Turn off to
+                      require correct tones for a &quot;Perfect&quot;.
                     </span>
                   </span>
                   <input
@@ -123,20 +169,22 @@ export default function ParentSettings() {
                     className="h-6 w-6"
                   />
                 </label>
-
-                <Link
-                  href="/grown-ups"
-                  className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 text-center font-semibold dark:bg-zinc-800"
-                >
-                  Tones, dictionary, writing &amp; more →
-                </Link>
               </>
             )}
+
+            <Link
+              href={language.grownUpsPath}
+              className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 text-center font-semibold dark:bg-zinc-800"
+            >
+              {language.grownUpsLabel}
+            </Link>
 
             <button
               type="button"
               onClick={() => {
-                if (!confirm("Erase all stars (every language) and start over?"))
+                if (
+                  !confirm("Erase all stars (every language) and start over?")
+                )
                   return;
                 localStorage.removeItem(PROGRESS_KEY);
                 reloadProgress(); // drop the cached snapshot; the map re-renders

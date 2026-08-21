@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Paged from "@/components/Paged";
 import { STEP_COPY, type Step } from "@/lib/steps";
 import { speakEnglish } from "@/lib/speech";
 import { useArrowNav } from "@/lib/useArrowNav";
@@ -11,6 +12,12 @@ import { useArrowNav } from "@/lib/useArrowNav";
  * components stay thin and cannot drift apart visually. ArrowRight and
  * ArrowLeft drive Continue and Previous through lib/useArrowNav.ts —
  * the same keys as every grown-up pager.
+ *
+ * The frame is exactly one viewport tall. Instruction pill and the
+ * Continue row are fixed-height rails; the step's own content is the
+ * only thing that flexes, and it pages inside its box rather than
+ * pushing Continue off a short screen. Sizes step down below sm: a
+ * phone in landscape has ~390px of height to spend on all of this.
  */
 export default function StepShell({
   kind,
@@ -48,28 +55,30 @@ export default function StepShell({
   }, [line, narrate]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-between gap-6 px-4 py-6">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-4">
       <button
         type="button"
         onClick={() => speakEnglish(line)}
-        className="flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-lg font-semibold dark:bg-zinc-800"
+        className="flex shrink-0 items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-sm font-semibold sm:px-4 sm:py-2 sm:text-lg dark:bg-zinc-800"
       >
         <span aria-hidden>{copy.icon}</span>
         {copy.text}
         <span aria-hidden>🔊</span>
       </button>
 
-      <div className="flex w-full flex-1 flex-col items-center justify-center gap-6">
-        {children}
-      </div>
+      <Paged className="w-full min-h-0 flex-1">
+        <div className="my-auto flex w-full flex-col items-center gap-2 sm:gap-4">
+          {children}
+        </div>
+      </Paged>
 
-      <div className="flex w-full max-w-sm items-center gap-3">
+      <div className="flex w-full max-w-sm shrink-0 items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onBack}
           disabled={!onBack}
           aria-label="Back to the last step"
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-zinc-200 bg-white text-2xl font-bold transition active:scale-95 disabled:opacity-30 dark:border-zinc-700 dark:bg-zinc-900"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 border-zinc-200 bg-white text-xl font-bold transition active:scale-95 disabled:opacity-30 sm:h-16 sm:w-16 sm:text-2xl dark:border-zinc-700 dark:bg-zinc-900"
         >
           ←
         </button>
@@ -77,7 +86,7 @@ export default function StepShell({
           type="button"
           onClick={onContinue}
           disabled={!canContinue}
-          className="flex-1 rounded-full bg-red-600 px-8 py-5 text-xl font-bold text-white transition active:scale-95 disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
+          className="flex-1 rounded-full bg-red-600 px-6 py-3 text-lg font-bold text-white transition active:scale-95 disabled:bg-zinc-300 sm:px-8 sm:py-4 sm:text-xl dark:disabled:bg-zinc-700"
         >
           {continueLabel}
         </button>

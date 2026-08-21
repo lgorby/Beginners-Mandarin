@@ -1,0 +1,9 @@
+# Data files parsed line-by-line at runtime check out with LF everywhere,
+# including on Windows where core.autocrlf would otherwise rewrite them.
+# lib/spanishDictionary.ts tolerates CRLF too - this keeps the raw file
+# clean for the build scripts and for anything that reads it by hand.
+#
+# cedict_ts.u8 is deliberately NOT listed: its parser regex already
+# absorbs a trailing \r, and re-normalising 120k lines would bury a real
+# diff under line-ending churn.
+data/*.tsv text eol=lf

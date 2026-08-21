@@ -29,7 +29,7 @@ export default function MeetStep({
       onContinue={() => onDone({ correct: true, spoken: false })}
     >
       <PicTile wordKey={step.word} size="lg" />
-      <p className="text-2xl font-semibold text-zinc-500">
+      <p className="text-lg font-semibold text-zinc-500 sm:text-2xl">
         {getWord(step.word).en}
       </p>
     </StepShell>
