@@ -42,3 +42,6 @@ next-env.d.ts
 
 # portable build output
 dist-portable/
+
+# run-skill screenshots (agent tooling output)
+.claude/skills/run-beginners-mandarin/shots/
