@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fold, searchSpanish } from "../spanishDictionary";
+import { fold, parseEntries, searchSpanish } from "../spanishDictionary";
 
 describe("fold", () => {
   it("strips accents and lowercases", () => {
@@ -47,15 +47,41 @@ describe("searchSpanish", () => {
   });
 
   it("leaves no stray carriage return on the last translation", () => {
-    // Windows checks the TSV out with CRLF (core.autocrlf), and the last
-    // tab-separated field on each line is the translation list. Splitting
-    // on "\n" alone left a \r glued to every entry's final translation,
-    // which silently cost exact-match entries their top score tier and
-    // printed a control character in the UI.
     for (const r of searchSpanish("water", 10)) {
       for (const t of r.translations) {
         expect(t).toBe(t.trim());
       }
     }
+  });
+});
+
+describe("parseEntries", () => {
+  // The TSV on disk is LF-only now that .gitattributes pins data/*.tsv
+  // to LF, so a test reading the real file could never exercise the
+  // CRLF branch again. Feed literal CRLF text instead — this is what
+  // regressed when the parser briefly split on "\n" alone: a \r rode
+  // along on every entry's last translation.
+  it("strips a trailing \\r from the last field on CRLF input", () => {
+    const text = "agua\tnf\t10\twater\r\nperro\tnm\t8\tdog | hound\r\n";
+    const parsed = parseEntries(text);
+    expect(parsed).toHaveLength(2);
+    for (const e of parsed) {
+      for (const t of e.translations) {
+        expect(t).toBe(t.trim());
+      }
+    }
+    expect(parsed[1].translations).toEqual(["dog", "hound"]);
+  });
+
+  it("parses LF input the same way", () => {
+    const text = "agua\tnf\t10\twater\nperro\tnm\t8\tdog | hound\n";
+    const parsed = parseEntries(text);
+    expect(parsed).toHaveLength(2);
+    for (const e of parsed) {
+      for (const t of e.translations) {
+        expect(t).toBe(t.trim());
+      }
+    }
+    expect(parsed[1].translations).toEqual(["dog", "hound"]);
   });
 });

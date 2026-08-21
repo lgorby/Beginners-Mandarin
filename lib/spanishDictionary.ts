@@ -36,14 +36,17 @@ export function fold(s: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
-function load(): LoadedEntry[] {
-  if (entries) return entries;
-  const file = path.join(process.cwd(), "data", "wikdict_es_en.tsv");
-  const text = fs.readFileSync(file, "utf8");
+/**
+ * Parse the TSV's text into entries. Exported (and pure) so a test can
+ * feed it a literal CRLF fixture directly: .gitattributes now pins
+ * data/*.tsv to LF, so the file on disk never contains a \r and a test
+ * that only reads it from disk could never catch a CRLF regression.
+ */
+export function parseEntries(text: string): LoadedEntry[] {
   const out: LoadedEntry[] = [];
-  // Split on either line ending: Windows clones check this file out with
-  // CRLF (core.autocrlf, and .gitattributes only helps a fresh checkout),
-  // and a trailing \r would ride along on every entry's last translation.
+  // Split on either line ending: Windows clones used to check this file
+  // out with CRLF before .gitattributes pinned it to LF, and a trailing
+  // \r would ride along on every entry's last translation.
   for (const line of text.split(/\r?\n/)) {
     if (!line) continue;
     const [word, pos, importance, trans] = line.split("\t");
@@ -56,8 +59,15 @@ function load(): LoadedEntry[] {
       folded: fold(word),
     });
   }
-  entries = out;
   return out;
+}
+
+function load(): LoadedEntry[] {
+  if (entries) return entries;
+  const file = path.join(process.cwd(), "data", "wikdict_es_en.tsv");
+  const text = fs.readFileSync(file, "utf8");
+  entries = parseEntries(text);
+  return entries;
 }
 
 export interface EsSearchResult extends EsDictEntry {
