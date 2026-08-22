@@ -17,7 +17,12 @@ const BARS = 7;
  * writes from one rAF loop — setState at animation rate would re-render
  * the whole step 60 times a second.
  */
-export default function VoiceLevel() {
+export default function VoiceLevel({
+  barClassName = "bg-red-500",
+}: {
+  /** Bar color, so the meter reads on any background (white on red). */
+  barClassName?: string;
+}) {
   const barsRef = useRef<(HTMLSpanElement | null)[]>([]);
 
   useEffect(() => {
@@ -71,7 +76,7 @@ export default function VoiceLevel() {
           ref={(el) => {
             barsRef.current[i] = el;
           }}
-          className="w-1.5 rounded-full bg-red-500 transition-[height] duration-75"
+          className={`w-1.5 rounded-full transition-[height] duration-75 ${barClassName}`}
           style={{ height: "4px" }}
         />
       ))}

@@ -238,7 +238,15 @@ export default function SayStep({
           }`}
           aria-label="Say it into the microphone"
         >
-          🎤
+          {/* While listening the glyph becomes the live meter: feedback
+              that adds NO height. A block below the button overflowed a
+              short viewport and Paged sent it to page 2 — the bars were
+              invisible exactly while the child was speaking. The fixed
+              h-8 box keeps the button the same size in both states, so
+              the swap never reflows the pagination mid-listen. */}
+          <span className="flex h-8 items-center justify-center">
+            {listening ? <VoiceLevel barClassName="bg-white" /> : "🎤"}
+          </span>
         </button>
       ) : (
         // Recognition is Chrome/Edge-only and needs internet. The child
@@ -249,19 +257,15 @@ export default function SayStep({
       )}
 
       {listening && (
-        <div className="flex flex-col items-center gap-1 sm:gap-2">
-          {/* One steady line — no phase-driven text. The recognizer's
-              phases reset on every silent re-arm (lib/speech.ts), and a
-              line that flips mid-word reads as "it stopped hearing me".
-              The equalizer below is the honest signal instead: it draws
-              from its own mic stream, so it dances exactly while the
-              child's voice is landing. */}
-          <p className="text-sm text-zinc-500 sm:text-lg">
-            Attempt {attempt} ·{" "}
-            {phase === "starting" ? "getting ready…" : "🎙️ say it now!"}
-          </p>
-          {phase !== "starting" && <VoiceLevel />}
-        </div>
+        // One steady line — no phase-driven text. The recognizer's
+        // phases reset on every silent re-arm (lib/speech.ts), and a
+        // line that flips mid-word reads as "it stopped hearing me".
+        // The equalizer on the mic button is the honest signal instead:
+        // its own mic stream, dancing exactly while the voice lands.
+        <p className="text-sm text-zinc-500 sm:text-lg">
+          Attempt {attempt} ·{" "}
+          {phase === "starting" ? "getting ready…" : "🎙️ say it now!"}
+        </p>
       )}
 
       {trouble !== "none" ? (
