@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ding,
-  getRecognizer,
   hasSpeechRecognition,
   recognizeAttempt,
   speak,
   stopSpeaking,
+  type RecognitionSession,
 } from "@/lib/speech";
 import { LANGUAGES, type LangCode } from "@/lib/languages";
 import { useClientValue } from "@/lib/useClientValue";
@@ -84,7 +84,7 @@ export default function MicPractice({
   // component has always shown first; the client then reads the truth.
   const supported = useClientValue(hasSpeechRecognition, true);
   const [error, setError] = useState<string | null>(null);
-  const recRef = useRef<SpeechRecognition | null>(null);
+  const sessionRef = useRef<RecognitionSession | null>(null);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Record & Compare state
@@ -96,7 +96,7 @@ export default function MicPractice({
 
   useEffect(() => {
     return () => {
-      recRef.current?.abort();
+      sessionRef.current?.abort();
       if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
       if (watchdogRef.current) clearTimeout(watchdogRef.current);
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
@@ -110,17 +110,12 @@ export default function MicPractice({
     };
   }, [clipUrl]);
 
-  // One recognizer per card. Chrome runs a single recognition session per
-  // page and tears the old one down asynchronously, so a fresh instance
-  // per tap can start against a half-dead session and fail every retry.
   const start = () => {
-    // A fresh recognizer per attempt: Edge can wedge a reused instance —
-    // start() is accepted but no events ever fire. Abort any previous
-    // session first.
-    recRef.current?.abort();
-    const rec = getRecognizer(language.recognitionLang);
-    if (!rec) return;
-    recRef.current = rec;
+    // Tear the previous attempt down silently — after abort() none of
+    // its callbacks fire, so it can never touch this attempt's UI.
+    // recognizeAttempt itself restarts a session that dies young against
+    // Chrome's half-torn-down previous one (the failed-retry race).
+    sessionRef.current?.abort();
     // Never listen while the speakers are playing the target phrase.
     stopSpeaking();
     setHeard(null);
@@ -130,9 +125,10 @@ export default function MicPractice({
     setError(null);
     setListening(true);
     // If the service hangs, force the session closed so the button
-    // comes back instead of pulsing forever.
-    watchdogRef.current = setTimeout(() => recRef.current?.abort(), 12000);
-    const ok = recognizeAttempt(rec, target, {
+    // comes back instead of pulsing forever. stop(), not abort():
+    // whatever it did hear still settles into a score.
+    watchdogRef.current = setTimeout(() => sessionRef.current?.stop(), 12000);
+    const session = recognizeAttempt(language.recognitionLang, target, {
       phase: (p) => {
         if (p === "mic") ding(); // the mic is truly open — speak now
       },
@@ -183,10 +179,13 @@ export default function MicPractice({
         setListening(false);
       },
     });
-    if (!ok) {
+    if (!session) {
+      if (watchdogRef.current) clearTimeout(watchdogRef.current);
       setError("Could not start listening — try again in a moment.");
       setListening(false);
+      return;
     }
+    sessionRef.current = session;
   };
 
   // Space/Enter = Say it! / try again, where this is the page's only mic.

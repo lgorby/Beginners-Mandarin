@@ -5,18 +5,20 @@ import SentenceRow from "../SentenceRow";
 import StepShell from "../StepShell";
 import {
   ding,
-  getRecognizer,
   hasSpeechRecognition,
   micPermissionGranted,
   recognizeAttempt,
   stopSpeaking,
+  type RecognitionSession,
 } from "@/lib/speech";
 import { languageOf, sentenceText, speakSentence } from "@/lib/kidSpeech";
 import { useClientValue } from "@/lib/useClientValue";
 import { useRetryKey } from "@/lib/useArrowNav";
 import type { Step } from "@/lib/steps";
 import type { SyllableMark } from "@/lib/pronounce";
+import MicDebugOverlay from "../../MicDebugOverlay";
 import SyllableReport from "../../SyllableReport";
+import VoiceLevel from "../VoiceLevel";
 import { useGentleTones } from "../../useGentleTones";
 
 export default function SayStep({
@@ -52,7 +54,7 @@ export default function SayStep({
   const [phase, setPhase] = useState<
     "starting" | "session" | "mic" | "sound" | "speech"
   >("starting");
-  const recRef = useRef<SpeechRecognition | null>(null);
+  const sessionRef = useRef<RecognitionSession | null>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Hands-free listening is armed once per step; any manual tap — 🎤,
@@ -73,13 +75,11 @@ export default function SayStep({
 
   const listen = useCallback(() => {
     autoArmed.current = false;
-    // A fresh recognizer per attempt: Edge can wedge a reused instance —
-    // start() is accepted but no events ever fire, so the button would
-    // pulse until the watchdog. Abort any previous session first.
-    recRef.current?.abort();
-    const rec = getRecognizer(language.recognitionLang);
-    if (!rec) return;
-    recRef.current = rec;
+    // Tear the previous attempt down SILENTLY: after abort() none of its
+    // callbacks fire, so a superseded session can never flip this
+    // attempt's listening state or clear its watchdog. (It used to —
+    // that stale `ended` was one way a retry's mic died under the child.)
+    sessionRef.current?.abort();
     // The word must never play into an open microphone: the recognizer
     // would hear the speakers, not the child.
     if (speakTimer.current) clearTimeout(speakTimer.current);
@@ -90,13 +90,14 @@ export default function SayStep({
     setPhase("starting");
     setReport(null);
     // If the service hangs, reset the UI directly — a wedged recognizer
-    // may not even honor abort() with an end event.
+    // may not even honor stop() with an end event. stop(), not abort():
+    // whatever it did hear still settles into a score.
     watchdog.current = setTimeout(() => {
-      recRef.current?.abort();
+      sessionRef.current?.stop();
       setListening(false);
       setTrouble((t) => (t === "none" ? "unheard" : t));
     }, 12000);
-    const ok = recognizeAttempt(rec, target, {
+    const session = recognizeAttempt(language.recognitionLang, target, {
       phase: (p) => {
         setPhase(p);
         if (p === "mic") ding(); // the mic is truly open — speak now
@@ -152,10 +153,13 @@ export default function SayStep({
         setListening(false);
       },
     });
-    if (!ok) {
+    if (!session) {
+      if (watchdog.current) clearTimeout(watchdog.current);
       setTrouble("unheard");
       setListening(false);
+      return;
     }
+    sessionRef.current = session;
   }, [target, language.recognitionLang, isMandarin]);
 
   // Space/Enter = say it (again): the same action as tapping 🎤, so a
@@ -183,12 +187,12 @@ export default function SayStep({
       });
     }, 900);
     const armed = autoArmed;
-    const rec = recRef;
+    const session = sessionRef;
     const timers = [speakTimer, watchdog];
     return () => {
       armed.current = false;
       timers.forEach((t) => t.current && clearTimeout(t.current));
-      rec.current?.abort();
+      session.current?.abort();
     };
   }, [step.words, question, listen]);
 
@@ -199,6 +203,7 @@ export default function SayStep({
       onBack={onBack}
       onContinue={() => onDone({ correct: true, spoken: score !== null })}
     >
+      <MicDebugOverlay />
       {/* Tapping a tile already speaks that word (PicTile speaks on
           click), so a separate 🔊 button was a second way to do what the
           picture does. Whole-sentence replay is NOT redundant, though —
@@ -233,7 +238,15 @@ export default function SayStep({
           }`}
           aria-label="Say it into the microphone"
         >
-          🎤
+          {/* While listening the glyph becomes the live meter: feedback
+              that adds NO height. A block below the button overflowed a
+              short viewport and Paged sent it to page 2 — the bars were
+              invisible exactly while the child was speaking. The fixed
+              h-8 box keeps the button the same size in both states, so
+              the swap never reflows the pagination mid-listen. */}
+          <span className="flex h-8 items-center justify-center">
+            {listening ? <VoiceLevel barClassName="bg-white" /> : "🎤"}
+          </span>
         </button>
       ) : (
         // Recognition is Chrome/Edge-only and needs internet. The child
@@ -244,29 +257,15 @@ export default function SayStep({
       )}
 
       {listening && (
-        <div className="flex flex-col items-center gap-1 sm:gap-2">
-          <p className="text-sm text-zinc-500 sm:text-lg">
-            Attempt {attempt} ·{" "}
-            {phase === "starting"
-              ? "getting ready…"
-              : phase === "session" || phase === "mic"
-                ? "🎙️ listening — say it now!"
-                : "👂 I can hear you!"}
-          </p>
-          {/* The bars only dance once the recognizer itself reports
-              sound — an honest signal, not a decoration. */}
-          {(phase === "sound" || phase === "speech") && (
-            <div className="flex h-8 items-center gap-1" aria-hidden>
-              {[10, 20, 28, 16, 24, 12, 22].map((h, i) => (
-                <span
-                  key={i}
-                  className="w-1.5 animate-bounce rounded-full bg-red-500"
-                  style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        // One steady line — no phase-driven text. The recognizer's
+        // phases reset on every silent re-arm (lib/speech.ts), and a
+        // line that flips mid-word reads as "it stopped hearing me".
+        // The equalizer on the mic button is the honest signal instead:
+        // its own mic stream, dancing exactly while the voice lands.
+        <p className="text-sm text-zinc-500 sm:text-lg">
+          Attempt {attempt} ·{" "}
+          {phase === "starting" ? "getting ready…" : "🎙️ say it now!"}
+        </p>
       )}
 
       {trouble !== "none" ? (

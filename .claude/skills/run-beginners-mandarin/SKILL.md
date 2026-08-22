@@ -118,3 +118,8 @@ npm test
 - **`No Edge/Chrome found in the standard install locations`**: edit
   the `BROWSERS` list at the top of the driver with the machine's
   browser path.
+- **`Jest worker encountered 2 child process exceptions, exceeding
+  retry limit`** (runtime error in the browser): the dev server's
+  internal worker crashed — happens when branches are switched or
+  merged under a running server and its shared `.next` goes stale.
+  Stop the server, `Remove-Item -Recurse -Force .next`, start it again.

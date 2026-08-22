@@ -4,6 +4,7 @@ import {
   normTag,
   pickVoice,
   rankVoices,
+  recognizeAttempt,
   scoreMatch,
   voiceWarningKind,
 } from "@/lib/speech";
@@ -85,6 +86,184 @@ describe("bestCandidate", () => {
       transcript: "",
       score: -1,
     });
+  });
+});
+
+describe("recognizeAttempt", () => {
+  // The browser recognizer, faked: the test fires its events by hand.
+  class FakeRec {
+    onstart: (() => void) | null = null;
+    onaudiostart: (() => void) | null = null;
+    onsoundstart: (() => void) | null = null;
+    onspeechstart: (() => void) | null = null;
+    onresult: ((e: { results: { transcript: string }[][] }) => void) | null =
+      null;
+    onnomatch: (() => void) | null = null;
+    onerror: ((e: { error: string }) => void) | null = null;
+    onend: (() => void) | null = null;
+    started = 0;
+    stopped = 0;
+    aborted = 0;
+    start() {
+      this.started += 1;
+    }
+    stop() {
+      this.stopped += 1;
+    }
+    abort() {
+      this.aborted += 1;
+    }
+  }
+
+  /** One attempt against fakes: drive recs[i]'s events, read the log. */
+  const attempt = () => {
+    const recs: FakeRec[] = [];
+    let t = 0;
+    const log = {
+      settled: [] as { score: number; heardSound: boolean }[],
+      errors: [] as string[],
+      ended: 0,
+    };
+    const session = recognizeAttempt(
+      "zh-CN",
+      "你好",
+      {
+        settle: (b) => log.settled.push(b),
+        error: (code) => log.errors.push(code),
+        ended: () => (log.ended += 1),
+      },
+      () => {
+        const r = new FakeRec();
+        recs.push(r);
+        return r as unknown as SpeechRecognition;
+      },
+      () => t
+    );
+    return { recs, log, session: session!, tick: (ms: number) => (t += ms) };
+  };
+
+  it("silently restarts a session that dies without producing text", () => {
+    const { recs, log, tick } = attempt();
+    tick(500);
+    recs[0].onend!(); // the half-dead-session race: died in 500ms, silent
+    expect(recs).toHaveLength(2); // a fresh session took its place
+    expect(log.ended).toBe(0); // and nobody was told
+    recs[1].onsoundstart!();
+    recs[1].onresult!({ results: [[{ transcript: "你好" }]] });
+    tick(4000);
+    recs[1].onend!();
+    expect(log.ended).toBe(1);
+    expect(log.settled).toEqual([
+      expect.objectContaining({ score: 100, heardSound: true }),
+    ]);
+  });
+
+  // The real trace behind this: Edge fired "no-speech" ~3s after start
+  // even though soundstart AND speechstart had fired — right as a child
+  // pausing before the retry began to speak.
+  it("re-arms through a premature no-speech that heard the child", () => {
+    const { recs, log, tick } = attempt();
+    recs[0].onsoundstart!();
+    recs[0].onspeechstart!();
+    recs[0].onerror!({ error: "no-speech" });
+    tick(3000);
+    recs[0].onend!();
+    expect(recs).toHaveLength(2); // still listening
+    expect(log.errors).toEqual([]); // and no "I didn't hear you" flashed
+    recs[1].onresult!({ results: [[{ transcript: "你好" }]] });
+    tick(3000);
+    recs[1].onend!();
+    expect(log.ended).toBe(1);
+    expect(log.settled[0].score).toBe(100);
+  });
+
+  it("never restarts once text arrived — that end is real", () => {
+    const { recs, log, tick } = attempt();
+    recs[0].onresult!({ results: [[{ transcript: "好" }]] });
+    tick(500);
+    recs[0].onend!();
+    expect(recs).toHaveLength(1);
+    expect(log.ended).toBe(1);
+  });
+
+  it("concedes real silence once the retry budget is spent", () => {
+    const { recs, log, tick } = attempt();
+    tick(7000);
+    recs[0].onend!(); // within budget → re-armed
+    expect(recs).toHaveLength(2);
+    tick(4000); // 11s total — budget exhausted
+    recs[1].onend!();
+    expect(recs).toHaveLength(2);
+    expect(log.ended).toBe(1);
+    expect(log.settled[0].score).toBe(-1);
+  });
+
+  it("caps restarts when the recognizer ends instantly every time", () => {
+    const { recs, log } = attempt();
+    for (let i = 0; log.ended === 0 && i < 20; i++) recs[recs.length - 1].onend!();
+    expect(recs.length).toBeLessThanOrEqual(7); // 1 + MAX_RESTARTS
+    expect(log.ended).toBe(1);
+  });
+
+  it("fires no callback at all after abort()", () => {
+    const { recs, log, session } = attempt();
+    session.abort();
+    expect(recs[0].aborted).toBe(1);
+    recs[0].onerror!({ error: "network" });
+    recs[0].onend!();
+    expect(log.ended).toBe(0);
+    expect(log.settled).toEqual([]);
+    expect(log.errors).toEqual([]);
+  });
+
+  it("reports a fatal error at once and refuses to restart on it", () => {
+    const { recs, log } = attempt();
+    recs[0].onerror!({ error: "not-allowed" });
+    expect(log.errors).toEqual(["not-allowed"]);
+    recs[0].onend!(); // young, heard nothing — but a restart can't fix this
+    expect(recs).toHaveLength(1);
+    expect(log.ended).toBe(1);
+  });
+
+  it("drops a transient error that a restart superseded", () => {
+    const { recs, log, tick } = attempt();
+    recs[0].onerror!({ error: "network" });
+    recs[0].onend!(); // no text → restarted; the error never reaches the UI
+    recs[1].onresult!({ results: [[{ transcript: "你好" }]] });
+    tick(4000);
+    recs[1].onend!();
+    expect(log.errors).toEqual([]);
+    expect(log.ended).toBe(1);
+  });
+
+  it("reports a transient error when the session truly finishes", () => {
+    const { recs, log } = attempt();
+    recs[0].onresult!({ results: [[{ transcript: "持" }]] }); // text → no restart
+    recs[0].onerror!({ error: "network" });
+    recs[0].onend!();
+    expect(log.errors).toEqual(["network"]);
+    expect(log.ended).toBe(1);
+  });
+
+  it("stop() ends the attempt gracefully with no further restarts", () => {
+    const { recs, log, session } = attempt();
+    session.stop();
+    expect(recs[0].stopped).toBe(1);
+    expect(recs[0].aborted).toBe(0);
+    recs[0].onend!(); // young and textless — but the caller said stop
+    expect(recs).toHaveLength(1);
+    expect(log.ended).toBe(1);
+  });
+
+  it("returns null when no recognizer can be built", () => {
+    const session = recognizeAttempt(
+      "zh-CN",
+      "你好",
+      { settle: () => {}, error: () => {}, ended: () => {} },
+      () => null,
+      () => 0
+    );
+    expect(session).toBeNull();
   });
 });
 
