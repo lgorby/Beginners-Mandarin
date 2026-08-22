@@ -443,18 +443,61 @@ export function bestCandidate(
   return best;
 }
 
+// --- ?micdebug -----------------------------------------------------------
+// An on-screen recognition event trace, because the machine where the
+// mic misbehaves rarely has a console open (and a phone never does).
+// Enabled by ?micdebug in the URL; nobody types it by accident. The
+// trace records every raw recognizer event with a timestamp, so a
+// failing retry can say exactly HOW it failed: a session that opens
+// and dies without ever reporting sound is the browser's session race,
+// one that hears speech and ends fast is endpointing, and so on.
+
+let micTrace: string[] = [];
+const micTraceListeners = new Set<() => void>();
+const EMPTY_TRACE: string[] = [];
+
+export function micDebugEnabled(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.location.search.includes("micdebug")
+  );
+}
+
+function trace(line: string) {
+  if (!micDebugEnabled()) return;
+  const stamp = `${(performance.now() / 1000).toFixed(1)}s`;
+  // Console too — on a desktop both records are useful.
+  console.log(`[micdebug] ${stamp} ${line}`);
+  micTrace = [...micTrace.slice(-11), `${stamp} ${line}`];
+  for (const l of micTraceListeners) l();
+}
+
+export function subscribeMicTrace(cb: () => void): () => void {
+  micTraceListeners.add(cb);
+  return () => {
+    micTraceListeners.delete(cb);
+  };
+}
+
+export const getMicTraceSnapshot = () => micTrace;
+export const getMicTraceServerSnapshot = () => EMPTY_TRACE;
+
 /**
- * A session dying this young without ever hearing sound was never really
- * open. Chrome runs one recognition session per page and tears the old
- * one down asynchronously, so a retry can start against the half-dead
- * previous session: the new session reports start/audiostart (the UI
- * says "say it now"), then dies the moment real audio flows — right as
- * the learner starts speaking. A genuine "you said nothing" takes the
- * recognizer's own no-speech timeout (~7s), well past this window.
+ * How long one attempt keeps the microphone armed before conceding that
+ * nothing was said. Individual browser sessions die much sooner than
+ * this for reasons that are not the learner's fault — a ?micdebug trace
+ * on the real machine showed Edge firing "no-speech" ~3s after start
+ * even though soundstart AND speechstart had fired, right as a child
+ * pausing to gather courage began to speak; Chrome can also start a
+ * retry against its half-torn-down previous session and die on the
+ * first audio. So any session that ends without producing text is
+ * silently replaced until this budget runs out. Real recognition (text
+ * arrived) always settles immediately. Sits under the callers' 12s
+ * watchdogs, which are the true ceiling.
  */
-const QUICK_DEATH_MS = 2500;
-/** How many silent restarts one attempt gets before giving up honestly. */
-const MAX_RESTARTS = 2;
+const RETRY_BUDGET_MS = 10_000;
+/** Loop guard for a pathological recognizer that ends instantly. */
+const MAX_RESTARTS = 6;
 
 /** Errors a fresh session cannot fix — report at once, never restart. */
 const FATAL_ERRORS = ["not-allowed", "service-not-allowed", "audio-capture"];
@@ -474,11 +517,12 @@ export interface RecognitionSession {
  * Returns null if the session could not start.
  *
  * An attempt is one LOGICAL session: when the underlying recognizer dies
- * young without hearing anything (see QUICK_DEATH_MS), a fresh one is
- * started silently in its place — the caller's UI keeps listening and
- * the learner never sees the browser's half-dead-session race. abort()
- * guarantees silence, so a superseded attempt can never touch the UI of
- * the attempt that replaced it.
+ * without producing any text (see RETRY_BUDGET_MS), a fresh one starts
+ * silently in its place — the caller's UI keeps listening and the
+ * learner never meets the browser's short fuses. abort() guarantees
+ * silence, so a superseded attempt can never touch the UI of the
+ * attempt that replaced it; stop() ends the attempt gracefully with no
+ * further restarts.
  *
  * `newRecognizer` and `now` are injectable for tests only.
  */
@@ -511,6 +555,7 @@ export function recognizeAttempt(
   };
   let rec: SpeechRecognition | null = null;
   let aborted = false;
+  let stopped = false;
   let fatal = false;
   // Transient errors are held back until the attempt truly finishes: an
   // error that a silent restart is about to supersede must not flash
@@ -525,19 +570,23 @@ export function recognizeAttempt(
     cb.settle(best);
   };
 
-  const wire = (r: SpeechRecognition) => {
+  const wire = (r: SpeechRecognition, n: number) => {
     r.onstart = () => {
+      trace(`#${n} session open`);
       if (!aborted) cb.phase?.("session");
     };
     r.onaudiostart = () => {
+      trace(`#${n} mic open`);
       if (!aborted) cb.phase?.("mic");
     };
     r.onsoundstart = () => {
+      trace(`#${n} sound heard`);
       if (aborted) return;
       best = { ...best, heardSound: true };
       cb.phase?.("sound");
     };
     r.onspeechstart = () => {
+      trace(`#${n} speech heard`);
       if (aborted) return;
       best = { ...best, heardSound: true };
       cb.phase?.("speech");
@@ -547,13 +596,16 @@ export function recognizeAttempt(
       for (const c of transcriptCandidates(e)) seen.add(c);
       best = { ...best, candidates: [...seen] };
       const c = bestCandidate(target, e);
+      trace(`#${n} result "${c.transcript.slice(0, 14)}" score ${c.score}`);
       if (c.score > best.score)
         best = { ...best, transcript: c.transcript, score: c.score };
     };
     r.onnomatch = () => {
+      trace(`#${n} nomatch`);
       if (!aborted) pendingError = "nomatch";
     };
     r.onerror = (e) => {
+      trace(`#${n} error ${e.error}`);
       if (aborted || e.error === "aborted") return;
       if (FATAL_ERRORS.includes(e.error)) {
         fatal = true;
@@ -563,14 +615,29 @@ export function recognizeAttempt(
       }
     };
     r.onend = () => {
-      if (aborted) return;
-      const young = now() - startedAt < QUICK_DEATH_MS;
-      const heardNothing = !best.heardSound && best.candidates.length === 0;
-      if (young && heardNothing && !fatal && restarts < MAX_RESTARTS) {
+      if (aborted) {
+        trace(`#${n} end (after abort)`);
+        return;
+      }
+      const elapsed = now() - startedAt;
+      const total = now() - attemptStart;
+      const noText = best.candidates.length === 0;
+      if (
+        noText &&
+        !fatal &&
+        !stopped &&
+        total < RETRY_BUDGET_MS &&
+        restarts < MAX_RESTARTS
+      ) {
         restarts += 1;
         pendingError = null; // superseded by the restart
+        trace(`#${n} end after ${Math.round(elapsed)}ms → silent restart`);
         if (start()) return; // still listening — nobody is told
       }
+      trace(
+        `#${n} end after ${Math.round(elapsed)}ms → settle ` +
+          `(score ${best.score}, heard ${best.heardSound})`,
+      );
       finish();
     };
   };
@@ -578,11 +645,13 @@ export function recognizeAttempt(
   const start = (): boolean => {
     const r = newRecognizer(lang);
     if (!r) return false;
-    wire(r);
+    wire(r, restarts);
     startedAt = now();
+    trace(`#${restarts} start() ${lang}`);
     try {
       r.start();
     } catch {
+      trace(`#${restarts} start() threw`);
       r.abort();
       return false;
     }
@@ -590,9 +659,12 @@ export function recognizeAttempt(
     return true;
   };
 
+  const attemptStart = now();
   if (!start()) return null;
   return {
     stop() {
+      trace("caller stop()");
+      stopped = true;
       try {
         rec?.stop();
       } catch {
@@ -600,6 +672,7 @@ export function recognizeAttempt(
       }
     },
     abort() {
+      trace("caller abort()");
       aborted = true;
       try {
         rec?.abort();

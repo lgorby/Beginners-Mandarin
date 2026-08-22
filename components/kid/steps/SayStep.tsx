@@ -16,6 +16,7 @@ import { useClientValue } from "@/lib/useClientValue";
 import { useRetryKey } from "@/lib/useArrowNav";
 import type { Step } from "@/lib/steps";
 import type { SyllableMark } from "@/lib/pronounce";
+import MicDebugOverlay from "../../MicDebugOverlay";
 import SyllableReport from "../../SyllableReport";
 import { useGentleTones } from "../../useGentleTones";
 
@@ -201,6 +202,7 @@ export default function SayStep({
       onBack={onBack}
       onContinue={() => onDone({ correct: true, spoken: score !== null })}
     >
+      <MicDebugOverlay />
       {/* Tapping a tile already speaks that word (PicTile speaks on
           click), so a separate 🔊 button was a second way to do what the
           picture does. Whole-sentence replay is NOT redundant, though —

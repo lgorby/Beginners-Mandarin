@@ -142,7 +142,7 @@ describe("recognizeAttempt", () => {
     return { recs, log, session: session!, tick: (ms: number) => (t += ms) };
   };
 
-  it("silently restarts a session that dies young having heard nothing", () => {
+  it("silently restarts a session that dies without producing text", () => {
     const { recs, log, tick } = attempt();
     tick(500);
     recs[0].onend!(); // the half-dead-session race: died in 500ms, silent
@@ -158,31 +158,50 @@ describe("recognizeAttempt", () => {
     ]);
   });
 
-  it("gives up honestly after two quick deaths in a row", () => {
-    const { recs, log } = attempt();
-    recs[0].onend!();
-    recs[1].onend!();
-    recs[2].onend!(); // third strike — MAX_RESTARTS exhausted
-    expect(recs).toHaveLength(3);
-    expect(log.ended).toBe(1);
-    expect(log.settled[0].score).toBe(-1);
-  });
-
-  it("never restarts once sound was heard — that end is real", () => {
+  // The real trace behind this: Edge fired "no-speech" ~3s after start
+  // even though soundstart AND speechstart had fired — right as a child
+  // pausing before the retry began to speak.
+  it("re-arms through a premature no-speech that heard the child", () => {
     const { recs, log, tick } = attempt();
     recs[0].onsoundstart!();
+    recs[0].onspeechstart!();
+    recs[0].onerror!({ error: "no-speech" });
+    tick(3000);
+    recs[0].onend!();
+    expect(recs).toHaveLength(2); // still listening
+    expect(log.errors).toEqual([]); // and no "I didn't hear you" flashed
+    recs[1].onresult!({ results: [[{ transcript: "你好" }]] });
+    tick(3000);
+    recs[1].onend!();
+    expect(log.ended).toBe(1);
+    expect(log.settled[0].score).toBe(100);
+  });
+
+  it("never restarts once text arrived — that end is real", () => {
+    const { recs, log, tick } = attempt();
+    recs[0].onresult!({ results: [[{ transcript: "好" }]] });
     tick(500);
     recs[0].onend!();
     expect(recs).toHaveLength(1);
     expect(log.ended).toBe(1);
-    expect(log.settled[0].heardSound).toBe(true);
   });
 
-  it("never restarts past the quick-death window — that's real silence", () => {
+  it("concedes real silence once the retry budget is spent", () => {
     const { recs, log, tick } = attempt();
-    tick(8000); // the recognizer's own no-speech timeout territory
-    recs[0].onend!();
-    expect(recs).toHaveLength(1);
+    tick(7000);
+    recs[0].onend!(); // within budget → re-armed
+    expect(recs).toHaveLength(2);
+    tick(4000); // 11s total — budget exhausted
+    recs[1].onend!();
+    expect(recs).toHaveLength(2);
+    expect(log.ended).toBe(1);
+    expect(log.settled[0].score).toBe(-1);
+  });
+
+  it("caps restarts when the recognizer ends instantly every time", () => {
+    const { recs, log } = attempt();
+    for (let i = 0; log.ended === 0 && i < 20; i++) recs[recs.length - 1].onend!();
+    expect(recs.length).toBeLessThanOrEqual(7); // 1 + MAX_RESTARTS
     expect(log.ended).toBe(1);
   });
 
@@ -209,8 +228,8 @@ describe("recognizeAttempt", () => {
   it("drops a transient error that a restart superseded", () => {
     const { recs, log, tick } = attempt();
     recs[0].onerror!({ error: "network" });
-    recs[0].onend!(); // young → restarted; the error never reaches the UI
-    recs[1].onsoundstart!();
+    recs[0].onend!(); // no text → restarted; the error never reaches the UI
+    recs[1].onresult!({ results: [[{ transcript: "你好" }]] });
     tick(4000);
     recs[1].onend!();
     expect(log.errors).toEqual([]);
@@ -219,18 +238,21 @@ describe("recognizeAttempt", () => {
 
   it("reports a transient error when the session truly finishes", () => {
     const { recs, log } = attempt();
-    recs[0].onsoundstart!(); // heard → no restart
+    recs[0].onresult!({ results: [[{ transcript: "持" }]] }); // text → no restart
     recs[0].onerror!({ error: "network" });
     recs[0].onend!();
     expect(log.errors).toEqual(["network"]);
     expect(log.ended).toBe(1);
   });
 
-  it("stop() ends the current session gracefully", () => {
-    const { recs, session } = attempt();
+  it("stop() ends the attempt gracefully with no further restarts", () => {
+    const { recs, log, session } = attempt();
     session.stop();
     expect(recs[0].stopped).toBe(1);
     expect(recs[0].aborted).toBe(0);
+    recs[0].onend!(); // young and textless — but the caller said stop
+    expect(recs).toHaveLength(1);
+    expect(log.ended).toBe(1);
   });
 
   it("returns null when no recognizer can be built", () => {
