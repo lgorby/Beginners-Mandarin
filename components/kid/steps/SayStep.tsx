@@ -18,6 +18,7 @@ import type { Step } from "@/lib/steps";
 import type { SyllableMark } from "@/lib/pronounce";
 import MicDebugOverlay from "../../MicDebugOverlay";
 import SyllableReport from "../../SyllableReport";
+import VoiceLevel from "../VoiceLevel";
 import { useGentleTones } from "../../useGentleTones";
 
 export default function SayStep({
@@ -249,27 +250,17 @@ export default function SayStep({
 
       {listening && (
         <div className="flex flex-col items-center gap-1 sm:gap-2">
+          {/* One steady line — no phase-driven text. The recognizer's
+              phases reset on every silent re-arm (lib/speech.ts), and a
+              line that flips mid-word reads as "it stopped hearing me".
+              The equalizer below is the honest signal instead: it draws
+              from its own mic stream, so it dances exactly while the
+              child's voice is landing. */}
           <p className="text-sm text-zinc-500 sm:text-lg">
             Attempt {attempt} ·{" "}
-            {phase === "starting"
-              ? "getting ready…"
-              : phase === "session" || phase === "mic"
-                ? "🎙️ listening — say it now!"
-                : "👂 I can hear you!"}
+            {phase === "starting" ? "getting ready…" : "🎙️ say it now!"}
           </p>
-          {/* The bars only dance once the recognizer itself reports
-              sound — an honest signal, not a decoration. */}
-          {(phase === "sound" || phase === "speech") && (
-            <div className="flex h-8 items-center gap-1" aria-hidden>
-              {[10, 20, 28, 16, 24, 12, 22].map((h, i) => (
-                <span
-                  key={i}
-                  className="w-1.5 animate-bounce rounded-full bg-red-500"
-                  style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
-                />
-              ))}
-            </div>
-          )}
+          {phase !== "starting" && <VoiceLevel />}
         </div>
       )}
 
