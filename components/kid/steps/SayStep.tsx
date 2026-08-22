@@ -5,11 +5,11 @@ import SentenceRow from "../SentenceRow";
 import StepShell from "../StepShell";
 import {
   ding,
-  getRecognizer,
   hasSpeechRecognition,
   micPermissionGranted,
   recognizeAttempt,
   stopSpeaking,
+  type RecognitionSession,
 } from "@/lib/speech";
 import { languageOf, sentenceText, speakSentence } from "@/lib/kidSpeech";
 import { useClientValue } from "@/lib/useClientValue";
@@ -52,7 +52,7 @@ export default function SayStep({
   const [phase, setPhase] = useState<
     "starting" | "session" | "mic" | "sound" | "speech"
   >("starting");
-  const recRef = useRef<SpeechRecognition | null>(null);
+  const sessionRef = useRef<RecognitionSession | null>(null);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Hands-free listening is armed once per step; any manual tap — 🎤,
@@ -73,13 +73,11 @@ export default function SayStep({
 
   const listen = useCallback(() => {
     autoArmed.current = false;
-    // A fresh recognizer per attempt: Edge can wedge a reused instance —
-    // start() is accepted but no events ever fire, so the button would
-    // pulse until the watchdog. Abort any previous session first.
-    recRef.current?.abort();
-    const rec = getRecognizer(language.recognitionLang);
-    if (!rec) return;
-    recRef.current = rec;
+    // Tear the previous attempt down SILENTLY: after abort() none of its
+    // callbacks fire, so a superseded session can never flip this
+    // attempt's listening state or clear its watchdog. (It used to —
+    // that stale `ended` was one way a retry's mic died under the child.)
+    sessionRef.current?.abort();
     // The word must never play into an open microphone: the recognizer
     // would hear the speakers, not the child.
     if (speakTimer.current) clearTimeout(speakTimer.current);
@@ -90,13 +88,14 @@ export default function SayStep({
     setPhase("starting");
     setReport(null);
     // If the service hangs, reset the UI directly — a wedged recognizer
-    // may not even honor abort() with an end event.
+    // may not even honor stop() with an end event. stop(), not abort():
+    // whatever it did hear still settles into a score.
     watchdog.current = setTimeout(() => {
-      recRef.current?.abort();
+      sessionRef.current?.stop();
       setListening(false);
       setTrouble((t) => (t === "none" ? "unheard" : t));
     }, 12000);
-    const ok = recognizeAttempt(rec, target, {
+    const session = recognizeAttempt(language.recognitionLang, target, {
       phase: (p) => {
         setPhase(p);
         if (p === "mic") ding(); // the mic is truly open — speak now
@@ -152,10 +151,13 @@ export default function SayStep({
         setListening(false);
       },
     });
-    if (!ok) {
+    if (!session) {
+      if (watchdog.current) clearTimeout(watchdog.current);
       setTrouble("unheard");
       setListening(false);
+      return;
     }
+    sessionRef.current = session;
   }, [target, language.recognitionLang, isMandarin]);
 
   // Space/Enter = say it (again): the same action as tapping 🎤, so a
@@ -183,12 +185,12 @@ export default function SayStep({
       });
     }, 900);
     const armed = autoArmed;
-    const rec = recRef;
+    const session = sessionRef;
     const timers = [speakTimer, watchdog];
     return () => {
       armed.current = false;
       timers.forEach((t) => t.current && clearTimeout(t.current));
-      rec.current?.abort();
+      session.current?.abort();
     };
   }, [step.words, question, listen]);
 

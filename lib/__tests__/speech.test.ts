@@ -4,6 +4,7 @@ import {
   normTag,
   pickVoice,
   rankVoices,
+  recognizeAttempt,
   scoreMatch,
   voiceWarningKind,
 } from "@/lib/speech";
@@ -85,6 +86,162 @@ describe("bestCandidate", () => {
       transcript: "",
       score: -1,
     });
+  });
+});
+
+describe("recognizeAttempt", () => {
+  // The browser recognizer, faked: the test fires its events by hand.
+  class FakeRec {
+    onstart: (() => void) | null = null;
+    onaudiostart: (() => void) | null = null;
+    onsoundstart: (() => void) | null = null;
+    onspeechstart: (() => void) | null = null;
+    onresult: ((e: { results: { transcript: string }[][] }) => void) | null =
+      null;
+    onnomatch: (() => void) | null = null;
+    onerror: ((e: { error: string }) => void) | null = null;
+    onend: (() => void) | null = null;
+    started = 0;
+    stopped = 0;
+    aborted = 0;
+    start() {
+      this.started += 1;
+    }
+    stop() {
+      this.stopped += 1;
+    }
+    abort() {
+      this.aborted += 1;
+    }
+  }
+
+  /** One attempt against fakes: drive recs[i]'s events, read the log. */
+  const attempt = () => {
+    const recs: FakeRec[] = [];
+    let t = 0;
+    const log = {
+      settled: [] as { score: number; heardSound: boolean }[],
+      errors: [] as string[],
+      ended: 0,
+    };
+    const session = recognizeAttempt(
+      "zh-CN",
+      "你好",
+      {
+        settle: (b) => log.settled.push(b),
+        error: (code) => log.errors.push(code),
+        ended: () => (log.ended += 1),
+      },
+      () => {
+        const r = new FakeRec();
+        recs.push(r);
+        return r as unknown as SpeechRecognition;
+      },
+      () => t
+    );
+    return { recs, log, session: session!, tick: (ms: number) => (t += ms) };
+  };
+
+  it("silently restarts a session that dies young having heard nothing", () => {
+    const { recs, log, tick } = attempt();
+    tick(500);
+    recs[0].onend!(); // the half-dead-session race: died in 500ms, silent
+    expect(recs).toHaveLength(2); // a fresh session took its place
+    expect(log.ended).toBe(0); // and nobody was told
+    recs[1].onsoundstart!();
+    recs[1].onresult!({ results: [[{ transcript: "你好" }]] });
+    tick(4000);
+    recs[1].onend!();
+    expect(log.ended).toBe(1);
+    expect(log.settled).toEqual([
+      expect.objectContaining({ score: 100, heardSound: true }),
+    ]);
+  });
+
+  it("gives up honestly after two quick deaths in a row", () => {
+    const { recs, log } = attempt();
+    recs[0].onend!();
+    recs[1].onend!();
+    recs[2].onend!(); // third strike — MAX_RESTARTS exhausted
+    expect(recs).toHaveLength(3);
+    expect(log.ended).toBe(1);
+    expect(log.settled[0].score).toBe(-1);
+  });
+
+  it("never restarts once sound was heard — that end is real", () => {
+    const { recs, log, tick } = attempt();
+    recs[0].onsoundstart!();
+    tick(500);
+    recs[0].onend!();
+    expect(recs).toHaveLength(1);
+    expect(log.ended).toBe(1);
+    expect(log.settled[0].heardSound).toBe(true);
+  });
+
+  it("never restarts past the quick-death window — that's real silence", () => {
+    const { recs, log, tick } = attempt();
+    tick(8000); // the recognizer's own no-speech timeout territory
+    recs[0].onend!();
+    expect(recs).toHaveLength(1);
+    expect(log.ended).toBe(1);
+  });
+
+  it("fires no callback at all after abort()", () => {
+    const { recs, log, session } = attempt();
+    session.abort();
+    expect(recs[0].aborted).toBe(1);
+    recs[0].onerror!({ error: "network" });
+    recs[0].onend!();
+    expect(log.ended).toBe(0);
+    expect(log.settled).toEqual([]);
+    expect(log.errors).toEqual([]);
+  });
+
+  it("reports a fatal error at once and refuses to restart on it", () => {
+    const { recs, log } = attempt();
+    recs[0].onerror!({ error: "not-allowed" });
+    expect(log.errors).toEqual(["not-allowed"]);
+    recs[0].onend!(); // young, heard nothing — but a restart can't fix this
+    expect(recs).toHaveLength(1);
+    expect(log.ended).toBe(1);
+  });
+
+  it("drops a transient error that a restart superseded", () => {
+    const { recs, log, tick } = attempt();
+    recs[0].onerror!({ error: "network" });
+    recs[0].onend!(); // young → restarted; the error never reaches the UI
+    recs[1].onsoundstart!();
+    tick(4000);
+    recs[1].onend!();
+    expect(log.errors).toEqual([]);
+    expect(log.ended).toBe(1);
+  });
+
+  it("reports a transient error when the session truly finishes", () => {
+    const { recs, log } = attempt();
+    recs[0].onsoundstart!(); // heard → no restart
+    recs[0].onerror!({ error: "network" });
+    recs[0].onend!();
+    expect(log.errors).toEqual(["network"]);
+    expect(log.ended).toBe(1);
+  });
+
+  it("stop() ends the current session gracefully", () => {
+    const { recs, session } = attempt();
+    session.stop();
+    expect(recs[0].stopped).toBe(1);
+    expect(recs[0].aborted).toBe(0);
+  });
+
+  it("returns null when no recognizer can be built", () => {
+    const session = recognizeAttempt(
+      "zh-CN",
+      "你好",
+      { settle: () => {}, error: () => {}, ended: () => {} },
+      () => null,
+      () => 0
+    );
+    expect(session).toBeNull();
   });
 });
 

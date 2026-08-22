@@ -444,14 +444,46 @@ export function bestCandidate(
 }
 
 /**
+ * A session dying this young without ever hearing sound was never really
+ * open. Chrome runs one recognition session per page and tears the old
+ * one down asynchronously, so a retry can start against the half-dead
+ * previous session: the new session reports start/audiostart (the UI
+ * says "say it now"), then dies the moment real audio flows — right as
+ * the learner starts speaking. A genuine "you said nothing" takes the
+ * recognizer's own no-speech timeout (~7s), well past this window.
+ */
+const QUICK_DEATH_MS = 2500;
+/** How many silent restarts one attempt gets before giving up honestly. */
+const MAX_RESTARTS = 2;
+
+/** Errors a fresh session cannot fix — report at once, never restart. */
+const FATAL_ERRORS = ["not-allowed", "service-not-allowed", "audio-capture"];
+
+export interface RecognitionSession {
+  /** Graceful stop: whatever was heard still settles, callbacks fire. */
+  stop(): void;
+  /** Silent teardown: no callback fires after this. */
+  abort(): void;
+}
+
+/**
  * Wire one recognition attempt and start it. Collects the best candidate
  * across every event and reports it through settle() after the session
  * ends (score -1 = no text at all). error() gets raw error codes plus
  * "nomatch", and never "aborted" (that's our own teardown, not a failure).
- * Returns false if the session could not start.
+ * Returns null if the session could not start.
+ *
+ * An attempt is one LOGICAL session: when the underlying recognizer dies
+ * young without hearing anything (see QUICK_DEATH_MS), a fresh one is
+ * started silently in its place — the caller's UI keeps listening and
+ * the learner never sees the browser's half-dead-session race. abort()
+ * guarantees silence, so a superseded attempt can never touch the UI of
+ * the attempt that replaced it.
+ *
+ * `newRecognizer` and `now` are injectable for tests only.
  */
 export function recognizeAttempt(
-  rec: SpeechRecognition,
+  lang: string,
   target: string,
   cb: {
     settle: (best: {
@@ -466,8 +498,10 @@ export function recognizeAttempt(
     /** Lifecycle, straight from the recognizer's own events — the only
      *  honest signal of whether a session really opened and heard you. */
     phase?: (p: "session" | "mic" | "sound" | "speech") => void;
-  }
-): boolean {
+  },
+  newRecognizer: (lang: string) => SpeechRecognition | null = getRecognizer,
+  now: () => number = Date.now
+): RecognitionSession | null {
   const seen = new Set<string>();
   let best = {
     transcript: "",
@@ -475,38 +509,105 @@ export function recognizeAttempt(
     heardSound: false,
     candidates: [] as string[],
   };
-  rec.onstart = () => cb.phase?.("session");
-  rec.onaudiostart = () => cb.phase?.("mic");
-  rec.onsoundstart = () => {
-    best = { ...best, heardSound: true };
-    cb.phase?.("sound");
-  };
-  rec.onspeechstart = () => {
-    best = { ...best, heardSound: true };
-    cb.phase?.("speech");
-  };
-  rec.onresult = (e) => {
-    for (const c of transcriptCandidates(e)) seen.add(c);
-    best = { ...best, candidates: [...seen] };
-    const c = bestCandidate(target, e);
-    if (c.score > best.score)
-      best = { ...best, transcript: c.transcript, score: c.score };
-  };
-  rec.onnomatch = () => cb.error("nomatch");
-  rec.onerror = (e) => {
-    if (e.error !== "aborted") cb.error(e.error);
-  };
-  rec.onend = () => {
+  let rec: SpeechRecognition | null = null;
+  let aborted = false;
+  let fatal = false;
+  // Transient errors are held back until the attempt truly finishes: an
+  // error that a silent restart is about to supersede must not flash
+  // "I didn't hear you" at a learner who is mid-word.
+  let pendingError: string | null = null;
+  let restarts = 0;
+  let startedAt = 0;
+
+  const finish = () => {
+    if (pendingError) cb.error(pendingError);
     cb.ended();
     cb.settle(best);
   };
-  try {
-    rec.start();
+
+  const wire = (r: SpeechRecognition) => {
+    r.onstart = () => {
+      if (!aborted) cb.phase?.("session");
+    };
+    r.onaudiostart = () => {
+      if (!aborted) cb.phase?.("mic");
+    };
+    r.onsoundstart = () => {
+      if (aborted) return;
+      best = { ...best, heardSound: true };
+      cb.phase?.("sound");
+    };
+    r.onspeechstart = () => {
+      if (aborted) return;
+      best = { ...best, heardSound: true };
+      cb.phase?.("speech");
+    };
+    r.onresult = (e) => {
+      if (aborted) return;
+      for (const c of transcriptCandidates(e)) seen.add(c);
+      best = { ...best, candidates: [...seen] };
+      const c = bestCandidate(target, e);
+      if (c.score > best.score)
+        best = { ...best, transcript: c.transcript, score: c.score };
+    };
+    r.onnomatch = () => {
+      if (!aborted) pendingError = "nomatch";
+    };
+    r.onerror = (e) => {
+      if (aborted || e.error === "aborted") return;
+      if (FATAL_ERRORS.includes(e.error)) {
+        fatal = true;
+        cb.error(e.error);
+      } else {
+        pendingError = e.error;
+      }
+    };
+    r.onend = () => {
+      if (aborted) return;
+      const young = now() - startedAt < QUICK_DEATH_MS;
+      const heardNothing = !best.heardSound && best.candidates.length === 0;
+      if (young && heardNothing && !fatal && restarts < MAX_RESTARTS) {
+        restarts += 1;
+        pendingError = null; // superseded by the restart
+        if (start()) return; // still listening — nobody is told
+      }
+      finish();
+    };
+  };
+
+  const start = (): boolean => {
+    const r = newRecognizer(lang);
+    if (!r) return false;
+    wire(r);
+    startedAt = now();
+    try {
+      r.start();
+    } catch {
+      r.abort();
+      return false;
+    }
+    rec = r;
     return true;
-  } catch {
-    rec.abort();
-    return false;
-  }
+  };
+
+  if (!start()) return null;
+  return {
+    stop() {
+      try {
+        rec?.stop();
+      } catch {
+        rec?.abort();
+      }
+    },
+    abort() {
+      aborted = true;
+      try {
+        rec?.abort();
+      } catch {
+        // already dead — silence was the point
+      }
+    },
+  };
 }
 
 /**
